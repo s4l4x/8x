@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+.env.local
+.wrangler/
+.dev.vars
+
+# Media cache
+packages/media-server/cache/
+
+# Build artifacts
+*.tsbuildinfo
+
+# OS
+.DS_Store

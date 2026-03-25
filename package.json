@@ -1,0 +1,10 @@
+{
+  "name": "8x",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "dev:web": "pnpm --filter @8x/web dev",
+    "dev:media": "pnpm --filter @8x/media-server dev",
+    "dev:worker": "pnpm --filter @8x/worker dev"
+  }
+}
