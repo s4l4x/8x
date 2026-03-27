@@ -1,13 +1,18 @@
+import dotenv from "dotenv";
+import path from "path";
+dotenv.config({ path: path.resolve(import.meta.dirname, "../../../.env") });
 import express from "express";
 import cors from "cors";
-import path from "path";
 import fs from "fs";
 import { extractStreams } from "./extract.js";
+import { fetchTranscript } from "./transcript.js";
+import { analyzeTranscript } from "./analyze.js";
 
 const app = express();
 const PORT = 3001;
 
 app.use(cors());
+app.use(express.json());
 
 // Extract video+audio for a given YouTube video ID
 app.get("/api/media/extract/:videoId", async (req, res) => {
@@ -34,6 +39,50 @@ app.get("/api/media/extract/:videoId", async (req, res) => {
     console.error("Extraction failed:", err);
     res.status(500).json({
       error: err instanceof Error ? err.message : "Extraction failed",
+    });
+  }
+});
+
+// Fetch transcript for a video
+app.get("/api/media/transcript/:videoId", async (req, res) => {
+  const { videoId } = req.params;
+
+  if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+    res.status(400).json({ error: "Invalid video ID" });
+    return;
+  }
+
+  try {
+    console.log(`Fetching transcript for ${videoId}...`);
+    const transcript = await fetchTranscript(videoId);
+    console.log(`Transcript: ${transcript.length} entries`);
+    res.json({ transcript });
+  } catch (err) {
+    console.error("Transcript failed:", err);
+    res.status(500).json({
+      error: err instanceof Error ? err.message : "Transcript failed",
+    });
+  }
+});
+
+// Analyze transcript with Claude
+app.post("/api/media/analyze", async (req, res) => {
+  const { title, transcript } = req.body;
+
+  if (!title || !transcript) {
+    res.status(400).json({ error: "title and transcript required" });
+    return;
+  }
+
+  try {
+    console.log(`Analyzing "${title}" (${transcript.length} entries)...`);
+    const analysis = await analyzeTranscript(title, transcript);
+    console.log(`Analysis complete: ${analysis.segments.length} segments`);
+    res.json(analysis);
+  } catch (err) {
+    console.error("Analysis failed:", err);
+    res.status(500).json({
+      error: err instanceof Error ? err.message : "Analysis failed",
     });
   }
 });
