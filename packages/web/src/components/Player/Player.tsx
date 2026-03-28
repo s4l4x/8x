@@ -36,6 +36,10 @@ export function Player({ videoId, onBack }: PlayerProps) {
     setOverlay(o);
   }, []);
 
+  const handleOverlayDismiss = useCallback(() => {
+    setOverlay({ visible: false, text: "", type: "summary" });
+  }, []);
+
   usePlaybackEngine({
     videoRef,
     analysis,
@@ -104,7 +108,7 @@ export function Player({ videoId, onBack }: PlayerProps) {
               <VideoElement ref={videoRef} url={media.url} />
 
               {/* Overlays — below controls so controls stay interactive */}
-              {smartMode && <OverlayLayer overlay={overlay} />}
+              {smartMode && <OverlayLayer overlay={overlay} onDismiss={handleOverlayDismiss} />}
 
               {/* Custom controls */}
               <PlaybackControls

@@ -112,11 +112,6 @@ export function usePlaybackEngine({
           video.currentTime = next.startTime;
           skipCooldownRef.current = false;
         }, 800);
-
-        // Hide overlay after seek
-        setTimeout(() => {
-          onOverlayChange({ visible: false, text: "", type: "summary" });
-        }, 2000);
       }
       return;
     }
@@ -132,11 +127,7 @@ export function usePlaybackEngine({
     if (strategy.showOverlay && seg.summary) {
       onOverlayChange({ visible: true, text: seg.summary, type: "summary" });
     } else if (seg.type === "key" && seg.importance >= 0.8) {
-      // Flash key point indicator briefly
       onOverlayChange({ visible: true, text: seg.summary, type: "key" });
-      setTimeout(() => {
-        onOverlayChange({ visible: false, text: "", type: "key" });
-      }, 3000);
     } else {
       onOverlayChange({ visible: false, text: "", type: "summary" });
     }
