@@ -65,12 +65,24 @@ app.get("/api/media/transcript/:videoId", async (req, res) => {
   }
 });
 
-// Analyze transcript with Claude
+// Analyze transcript with Claude (cached per videoId)
 app.post("/api/media/analyze", async (req, res) => {
-  const { title, transcript } = req.body;
+  const { videoId, title, transcript } = req.body;
 
   if (!title || !transcript) {
     res.status(400).json({ error: "title and transcript required" });
+    return;
+  }
+
+  // Check cache if videoId provided
+  const cachePath = videoId
+    ? path.resolve(import.meta.dirname, `../cache/${videoId}.analysis.json`)
+    : null;
+
+  if (cachePath && fs.existsSync(cachePath)) {
+    console.log(`Analysis cache hit for ${videoId}`);
+    const cached = JSON.parse(fs.readFileSync(cachePath, "utf-8"));
+    res.json(cached);
     return;
   }
 
@@ -78,6 +90,13 @@ app.post("/api/media/analyze", async (req, res) => {
     console.log(`Analyzing "${title}" (${transcript.length} entries)...`);
     const analysis = await analyzeTranscript(title, transcript);
     console.log(`Analysis complete: ${analysis.segments.length} segments`);
+
+    // Cache result
+    if (cachePath) {
+      fs.writeFileSync(cachePath, JSON.stringify(analysis, null, 2));
+      console.log(`Analysis cached to ${cachePath}`);
+    }
+
     res.json(analysis);
   } catch (err) {
     console.error("Analysis failed:", err);

@@ -36,13 +36,14 @@ interface AnalysisResponse {
 }
 
 export async function analyzeVideo(
+  videoId: string,
   title: string,
   transcript: TranscriptEntry[],
 ): Promise<AnalysisResponse> {
   const res = await fetch(`${MEDIA_SERVER}/analyze`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title, transcript }),
+    body: JSON.stringify({ videoId, title, transcript }),
   });
   if (!res.ok) {
     const err = await res.text();

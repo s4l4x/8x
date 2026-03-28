@@ -36,7 +36,7 @@ export const useVideoStore = create<VideoState>((set, get) => ({
       set({ status: "analyzing" });
 
       // Step 3: Analyze with Claude
-      const raw = await analyzeVideo(media.title, transcript);
+      const raw = await analyzeVideo(videoId, media.title, transcript);
 
       // Step 4: Compute playback strategies
       const segments = computeStrategies(raw.segments);
