@@ -248,16 +248,13 @@ export function PlaybackControls({
                   />
                 )}
 
-                {/* Playhead pill */}
-                <div
-                  className="absolute inset-y-0 z-10 pointer-events-none flex items-center justify-center -translate-x-1/2"
-                  style={{ left: `${progress}%` }}
-                >
-                  <div className="w-1.5 h-full rounded-full bg-white border border-white shadow-[0_0_4px_rgba(255,255,255,0.5)] flex items-center justify-center overflow-hidden">
-                    <div className="w-full h-full bg-[#FF4059]" />
-                  </div>
-                </div>
               </div>
+
+              {/* Playhead — circle when compact, pill when expanded, sits above overflow-hidden track */}
+              <div
+                className="absolute z-10 pointer-events-none -translate-x-1/2 top-1/2 -translate-y-1/2 w-3 h-3 group-hover/scrub:h-14 rounded-full bg-[#FF4059] border-2 border-white shadow-[0_0_6px_rgba(0,0,0,0.4)] transition-all duration-200"
+                style={{ left: `${progress}%` }}
+              />
             </div>
 
             {/* Bottom row */}
