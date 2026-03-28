@@ -14,7 +14,12 @@ export const VideoElement = forwardRef<HTMLVideoElement, VideoElementProps>(
         ref && "current" in ref ? ref.current : null;
       if (!video) return;
 
-      const onTimeUpdate = () => setCurrentTime(video.currentTime);
+      const onTimeUpdate = () => {
+        // Don't override store during scrub — scrubber sets currentTime directly
+        if (!usePlaybackStore.getState().scrubbing) {
+          setCurrentTime(video.currentTime);
+        }
+      };
       const onLoadedMetadata = () => setDuration(video.duration);
       const onPlay = () => setPlaying(true);
       const onPause = () => setPlaying(false);

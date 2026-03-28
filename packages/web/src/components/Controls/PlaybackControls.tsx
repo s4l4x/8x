@@ -25,12 +25,11 @@ export function PlaybackControls({
   analysisReady,
   segments,
 }: PlaybackControlsProps) {
-  const { playing, currentTime, duration, speed, setPlaying } =
+  const { playing, currentTime, duration, speed, scrubbing, setPlaying, setScrubbing, setCurrentTime } =
     usePlaybackStore();
   const [volume, setVolumeState] = useState(1);
   const [muted, setMuted] = useState(false);
   const [hovering, setHovering] = useState(false);
-  const [scrubbing, setScrubbing] = useState(false);
   const scrubberRef = useRef<HTMLDivElement>(null);
   const hideTimeoutRef = useRef<number>(0);
 
@@ -39,8 +38,11 @@ export function PlaybackControls({
   const togglePlay = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
+    console.log("[8x-controls] togglePlay", { paused: video.paused, time: video.currentTime, seeking: video.seeking, readyState: video.readyState });
     if (video.paused) {
-      video.play();
+      video.play().catch((err) => {
+        console.log("[8x-controls] play() rejected", err.name, err.message);
+      });
     } else {
       video.pause();
     }
@@ -53,9 +55,11 @@ export function PlaybackControls({
       if (!bar || !video) return;
       const rect = bar.getBoundingClientRect();
       const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      video.currentTime = pct * duration;
+      const time = pct * duration;
+      video.currentTime = time;
+      setCurrentTime(time);
     },
-    [videoRef, duration],
+    [videoRef, duration, setCurrentTime],
   );
 
   const onScrubStart = useCallback(

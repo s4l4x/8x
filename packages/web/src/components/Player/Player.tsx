@@ -18,13 +18,13 @@ interface PlayerProps {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  extracting: "Extracting video...",
-  transcribing: "Fetching transcript...",
-  analyzing: "Analyzing content with AI...",
+  extracting: "Extracting streams",
+  transcribing: "Fetching transcript",
+  analyzing: "Analyzing with AI",
 };
 
 export function Player({ videoId, onBack }: PlayerProps) {
-  const { media, analysis, status, error, loadVideo } = useVideoStore();
+  const { media, analysis, status, progressMessage, error, loadVideo } = useVideoStore();
   const speedOverrides = usePlaybackStore((s) => s.speedOverrides);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [smartMode, setSmartMode] = useState(false);
@@ -68,7 +68,7 @@ export function Player({ videoId, onBack }: PlayerProps) {
           transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
           className="w-12 h-12 border-4 border-8x-pink border-t-transparent rounded-full"
         />
-        <p className="text-8x-muted">Extracting streams...</p>
+        <p className="text-8x-muted">{progressMessage || "Extracting streams..."}</p>
       </div>
     );
   }
@@ -182,9 +182,16 @@ export function Player({ videoId, onBack }: PlayerProps) {
                       }}
                       className="w-5 h-5 border-2 border-8x-cyan border-t-transparent rounded-full flex-shrink-0"
                     />
-                    <span className="text-8x-cyan text-sm font-medium">
-                      {STATUS_LABELS[status] || status}
-                    </span>
+                    <div className="flex flex-col">
+                      <span className="text-8x-cyan text-sm font-medium">
+                        {STATUS_LABELS[status] || status}
+                      </span>
+                      {progressMessage && (
+                        <span className="text-8x-muted text-xs mt-0.5">
+                          {progressMessage}
+                        </span>
+                      )}
+                    </div>
                   </>
                 ) : (
                   <span className="text-8x-orange text-sm">
