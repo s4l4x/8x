@@ -97,9 +97,33 @@ export function Player({ videoId, onBack }: PlayerProps) {
 
         {media && (
           <>
-            <h2 className="text-xl font-semibold text-8x-white mb-4">
-              {media.title}
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-8x-white">
+                {media.title}
+              </h2>
+
+              {analysis && (
+                <motion.div
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="flex items-center gap-3 flex-shrink-0"
+                >
+                  <span className="text-8x-muted text-sm">
+                    {formatDuration(analysis.totalDuration)} &rarr;{" "}
+                    {formatDuration(analysis.estimatedSmartDuration)}
+                  </span>
+                  <div className="px-3 py-1.5 bg-8x-pink/15 border border-8x-pink/30 rounded-full">
+                    <span className="text-8x-pink text-sm font-semibold">
+                      {formatSpeedUp(
+                        analysis.totalDuration,
+                        analysis.estimatedSmartDuration,
+                      )}{" "}
+                      faster
+                    </span>
+                  </div>
+                </motion.div>
+              )}
+            </div>
 
             <div
               data-player-root
@@ -161,26 +185,8 @@ export function Player({ videoId, onBack }: PlayerProps) {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-4 space-y-4"
+            className="mt-4"
           >
-            {/* Speed savings badge */}
-            <div className="flex items-center gap-3">
-              <div className="px-3 py-1.5 bg-8x-pink/15 border border-8x-pink/30 rounded-full">
-                <span className="text-8x-pink text-sm font-semibold">
-                  {formatSpeedUp(
-                    analysis.totalDuration,
-                    analysis.estimatedSmartDuration,
-                  )}{" "}
-                  faster
-                </span>
-              </div>
-              <span className="text-8x-muted text-sm">
-                {formatDuration(analysis.totalDuration)} &rarr;{" "}
-                {formatDuration(analysis.estimatedSmartDuration)} with 8x
-              </span>
-            </div>
-
-            {/* Timeline */}
             <Timeline
               segments={analysis.segments}
               duration={analysis.totalDuration}
