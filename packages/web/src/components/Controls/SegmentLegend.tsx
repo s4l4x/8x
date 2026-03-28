@@ -39,7 +39,14 @@ function LegendItem({
   const { speedOverrides, setSpeedOverride } = usePlaybackStore();
   const speed = speedOverrides[type];
   const [hovering, setHovering] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [rawValue, setRawValue] = useState(() => speedToSlider(speed));
   const leaveTimeout = useRef<number>(0);
+
+  // Sync rawValue from store when not dragging
+  useEffect(() => {
+    if (!dragging) setRawValue(speedToSlider(speed));
+  }, [speed, dragging]);
 
   const handleMouseEnter = () => {
     clearTimeout(leaveTimeout.current);
@@ -119,11 +126,15 @@ function LegendItem({
         type="range"
         min={MIN_SPEED}
         max={MAX_SPEED}
-        step={0.25}
-        value={speedToSlider(speed)}
+        step="any"
+        value={rawValue}
+        onMouseDown={() => setDragging(true)}
+        onMouseUp={() => setDragging(false)}
         onChange={(e) => {
-          const val = parseFloat(e.target.value);
-          setSpeedOverride(type, sliderToSpeed(val));
+          const raw = parseFloat(e.target.value);
+          setRawValue(raw);
+          const quantized = Math.round(raw * 4) / 4;
+          setSpeedOverride(type, sliderToSpeed(quantized));
         }}
         className="transition-all duration-200 h-3"
         style={{
