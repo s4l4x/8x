@@ -61,19 +61,24 @@ export function PlaybackControls({
 
   const onScrubStart = useCallback(
     (e: React.MouseEvent) => {
+      const video = videoRef.current;
+      const wasPlaying = video ? !video.paused : false;
+      if (video && wasPlaying) video.pause();
+
       setScrubbing(true);
       seek(e);
 
       const onMove = (ev: MouseEvent) => seek(ev);
       const onUp = () => {
         setScrubbing(false);
+        if (video && wasPlaying) video.play().catch(() => {});
         window.removeEventListener("mousemove", onMove);
         window.removeEventListener("mouseup", onUp);
       };
       window.addEventListener("mousemove", onMove);
       window.addEventListener("mouseup", onUp);
     },
-    [seek],
+    [seek, videoRef, setScrubbing],
   );
 
   const toggleMute = useCallback(() => {
@@ -253,7 +258,7 @@ export function PlaybackControls({
 
               {/* Playhead — circle when compact, pill when expanded, sits above overflow-hidden track */}
               <div
-                className="absolute z-10 pointer-events-none -translate-x-1/2 top-1/2 -translate-y-1/2 w-4 h-4 group-hover/scrub:w-1.5 group-hover/scrub:h-14 rounded-full bg-white border-2 group-hover/scrub:border border-white shadow-[0_0_6px_rgba(0,0,0,0.4)] transition-all duration-200"
+                className={`absolute z-10 pointer-events-none -translate-x-1/2 top-1/2 -translate-y-1/2 w-4 h-4 group-hover/scrub:w-1.5 group-hover/scrub:h-14 rounded-full bg-white border-2 group-hover/scrub:border border-white shadow-[0_0_6px_rgba(0,0,0,0.4)] ${scrubbing ? "transition-[width,height,border-width] duration-200" : "transition-all duration-200"}`}
                 style={{ left: `${progress}%` }}
               />
             </div>
