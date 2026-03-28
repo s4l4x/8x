@@ -38,11 +38,8 @@ export function PlaybackControls({
   const togglePlay = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
-    console.log("[8x-controls] togglePlay", { paused: video.paused, time: video.currentTime, seeking: video.seeking, readyState: video.readyState });
     if (video.paused) {
-      video.play().catch((err) => {
-        console.log("[8x-controls] play() rejected", err.name, err.message);
-      });
+      video.play().catch(() => {});
     } else {
       video.pause();
     }

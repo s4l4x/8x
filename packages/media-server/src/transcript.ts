@@ -29,13 +29,17 @@ function runYtDlp(args: string[]): Promise<string> {
 
 export async function fetchTranscript(
   videoId: string,
+  onProgress?: (message: string) => void,
 ): Promise<TranscriptEntry[]> {
   const subtitlePath = path.join(CACHE_DIR, `${videoId}.en.json3`);
 
   // Check cache
   if (fs.existsSync(subtitlePath)) {
+    onProgress?.("Found cached transcript");
     return parseJson3(subtitlePath);
   }
+
+  onProgress?.("Downloading captions...");
 
   const url = `https://www.youtube.com/watch?v=${videoId}`;
 
@@ -51,6 +55,7 @@ export async function fetchTranscript(
   ]);
 
   if (!fs.existsSync(subtitlePath)) {
+    onProgress?.("Trying manual captions...");
     // Try manual subs
     await runYtDlp([
       "--write-sub",

@@ -18,13 +18,36 @@ function ensureCacheDir() {
   }
 }
 
-function runYtDlp(args: string[]): Promise<string> {
+function runYtDlp(
+  args: string[],
+  onProgress?: (message: string) => void,
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const proc = spawn("yt-dlp", args);
     let stdout = "";
     let stderr = "";
     proc.stdout.on("data", (d) => (stdout += d));
-    proc.stderr.on("data", (d) => (stderr += d));
+    proc.stderr.on("data", (d) => {
+      const chunk = d.toString();
+      stderr += chunk;
+      if (onProgress) {
+        // Parse yt-dlp progress lines like "[download]  45.2% of ~100.00MiB at 5.00MiB/s ETA 00:10"
+        const dlMatch = chunk.match(
+          /\[download\]\s+([\d.]+)%\s+of\s+~?([\d.]+\w+)(?:\s+at\s+([\d.]+\w+\/s))?(?:\s+ETA\s+(\S+))?/,
+        );
+        if (dlMatch) {
+          const [, pct, size, speed, eta] = dlMatch;
+          let msg = `Downloading: ${pct}% of ${size}`;
+          if (speed) msg += ` at ${speed}`;
+          if (eta) msg += ` — ${eta} remaining`;
+          onProgress(msg);
+        }
+        // Parse merger step
+        if (chunk.includes("[Merger]")) {
+          onProgress("Merging video and audio streams...");
+        }
+      }
+    });
     proc.on("close", (code) => {
       if (code !== 0) {
         console.warn(`yt-dlp exited with code ${code}, stderr:\n${stderr}`);
@@ -47,7 +70,10 @@ export async function getVideoInfo(
   return { title: info.title, duration: info.duration };
 }
 
-export async function extractStreams(videoId: string): Promise<ExtractResult> {
+export async function extractStreams(
+  videoId: string,
+  onProgress?: (message: string) => void,
+): Promise<ExtractResult> {
   ensureCacheDir();
 
   const combinedPath = path.join(CACHE_DIR, `${videoId}.mp4`);
@@ -56,25 +82,31 @@ export async function extractStreams(videoId: string): Promise<ExtractResult> {
 
   // Check cache — only need combined for now
   if (fs.existsSync(combinedPath)) {
+    onProgress?.("Found cached video, loading metadata...");
     const info = await getVideoInfo(videoId);
     return { combinedPath, videoPath, audioPath, ...info };
   }
 
   const url = `https://www.youtube.com/watch?v=${videoId}`;
+  onProgress?.("Starting download...");
 
-  // Download best video+audio merged into mp4
-  await runYtDlp([
-    "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-    "--merge-output-format", "mp4",
-    "-o", combinedPath,
-    "--no-playlist",
-    url,
-  ]);
+  // Download best h264 video + aac audio, merged into mp4
+  await runYtDlp(
+    [
+      "-f", "bestvideo[vcodec^=avc1]+bestaudio[acodec^=mp4a]/best[ext=mp4]/best",
+      "--merge-output-format", "mp4",
+      "-o", combinedPath,
+      "--no-playlist",
+      url,
+    ],
+    onProgress,
+  );
 
   if (!fs.existsSync(combinedPath)) {
     throw new Error("Video extraction failed — file not found");
   }
 
+  onProgress?.("Fetching video metadata...");
   const info = await getVideoInfo(videoId);
   return { combinedPath, videoPath, audioPath, ...info };
 }

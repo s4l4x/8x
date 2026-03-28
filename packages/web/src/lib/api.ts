@@ -2,31 +2,11 @@ import type { MediaStreams, VideoAnalysis, Segment } from "./types";
 
 const MEDIA_SERVER = "/api/media";
 
-export async function extractMedia(videoId: string): Promise<MediaStreams> {
-  const res = await fetch(`${MEDIA_SERVER}/extract/${videoId}`);
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Media extraction failed: ${err}`);
-  }
-  return res.json();
-}
+type AnalysisStage = "extracting" | "transcribing" | "analyzing";
 
-interface TranscriptEntry {
-  text: string;
-  start: number;
-  duration: number;
-}
-
-export async function fetchTranscript(
-  videoId: string,
-): Promise<TranscriptEntry[]> {
-  const res = await fetch(`${MEDIA_SERVER}/transcript/${videoId}`);
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Transcript fetch failed: ${err}`);
-  }
-  const data = await res.json();
-  return data.transcript;
+interface SSEProgressEvent {
+  stage: AnalysisStage;
+  message: string;
 }
 
 interface AnalysisResponse {
@@ -35,19 +15,52 @@ interface AnalysisResponse {
   estimatedSmartDuration: number;
 }
 
-export async function analyzeVideo(
+interface ProcessCallbacks {
+  onProgress: (stage: AnalysisStage, message: string) => void;
+  onMedia: (media: MediaStreams) => void;
+  onAnalysis: (analysis: AnalysisResponse) => void;
+  onError: (error: string) => void;
+}
+
+export function processVideo(
   videoId: string,
-  title: string,
-  transcript: TranscriptEntry[],
-): Promise<AnalysisResponse> {
-  const res = await fetch(`${MEDIA_SERVER}/analyze`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ videoId, title, transcript }),
+  callbacks: ProcessCallbacks,
+): () => void {
+  const eventSource = new EventSource(`${MEDIA_SERVER}/process/${videoId}`);
+  let completed = false;
+
+  eventSource.addEventListener("progress", (e) => {
+    const data: SSEProgressEvent = JSON.parse(e.data);
+    callbacks.onProgress(data.stage, data.message);
   });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Analysis failed: ${err}`);
-  }
-  return res.json();
+
+  eventSource.addEventListener("media", (e) => {
+    const media: MediaStreams = JSON.parse(e.data);
+    callbacks.onMedia(media);
+  });
+
+  eventSource.addEventListener("analysis", (e) => {
+    const analysis: AnalysisResponse = JSON.parse(e.data);
+    callbacks.onAnalysis(analysis);
+  });
+
+  eventSource.addEventListener("error", (e) => {
+    // Ignore connection-close errors after successful completion
+    if (completed) return;
+    if (e instanceof MessageEvent) {
+      const data = JSON.parse(e.data);
+      callbacks.onError(data.message);
+    } else {
+      callbacks.onError("Connection lost");
+    }
+    eventSource.close();
+  });
+
+  eventSource.addEventListener("done", () => {
+    completed = true;
+    eventSource.close();
+  });
+
+  // Return cleanup function
+  return () => eventSource.close();
 }

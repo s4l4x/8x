@@ -16,6 +16,7 @@ interface PlaybackState {
   duration: number;
   speed: number;
   volume: number;
+  scrubbing: boolean;
   speedOverrides: Record<SegmentType, number>;
 
   setPlaying: (playing: boolean) => void;
@@ -23,6 +24,7 @@ interface PlaybackState {
   setDuration: (duration: number) => void;
   setSpeed: (speed: number) => void;
   setVolume: (volume: number) => void;
+  setScrubbing: (scrubbing: boolean) => void;
   setSpeedOverride: (type: SegmentType, speed: number) => void;
 }
 
@@ -32,6 +34,7 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
   duration: 0,
   speed: 1,
   volume: 1,
+  scrubbing: false,
   speedOverrides: { ...DEFAULT_SPEEDS },
 
   setPlaying: (playing) => set({ playing }),
@@ -39,6 +42,7 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
   setDuration: (duration) => set({ duration }),
   setSpeed: (speed) => set({ speed }),
   setVolume: (volume) => set({ volume }),
+  setScrubbing: (scrubbing) => set({ scrubbing }),
   setSpeedOverride: (type, speed) =>
     set((state) => ({
       speedOverrides: { ...state.speedOverrides, [type]: speed },

@@ -93,6 +93,7 @@ The estimatedSmartDuration is your estimate (in seconds) of how long it would ta
 export async function analyzeTranscript(
   title: string,
   transcript: TranscriptEntry[],
+  onProgress?: (message: string) => void,
 ): Promise<AnalysisResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -101,7 +102,9 @@ export async function analyzeTranscript(
 
   const client = new Anthropic({ apiKey });
 
-  const response = await client.messages.create({
+  onProgress?.(`Sending ${transcript.length} transcript entries to Claude...`);
+
+  const stream = client.messages.stream({
     model: "claude-sonnet-4-20250514",
     max_tokens: 8192,
     system: SYSTEM_PROMPT,
@@ -113,8 +116,26 @@ export async function analyzeTranscript(
     ],
   });
 
-  const text =
-    response.content[0].type === "text" ? response.content[0].text : "";
+  let text = "";
+  let lastSegCount = 0;
+
+  stream.on("text", (chunk) => {
+    text += chunk;
+    // Count segments found so far — only report when count increases
+    const segCount = (text.match(/"id"\s*:\s*"seg_/g) || []).length;
+    if (segCount > lastSegCount) {
+      lastSegCount = segCount;
+      onProgress?.(`Building segment map... ${segCount} segments identified`);
+    }
+  });
+
+  const finalMessage = await stream.finalMessage();
+
+  const inputTokens = finalMessage.usage.input_tokens;
+  const outputTokens = finalMessage.usage.output_tokens;
+  onProgress?.(
+    `Analysis complete — ${inputTokens} input tokens, ${outputTokens} output tokens`,
+  );
 
   // Extract JSON — handle possible markdown fences
   const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, text];

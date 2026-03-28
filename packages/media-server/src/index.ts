@@ -12,10 +12,9 @@ const app = express();
 const PORT = 3001;
 
 app.use(cors());
-app.use(express.json());
 
-// Extract video+audio for a given YouTube video ID
-app.get("/api/media/extract/:videoId", async (req, res) => {
+// Full pipeline with SSE progress reporting
+app.get("/api/media/process/:videoId", async (req, res) => {
   const { videoId } = req.params;
 
   if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
@@ -23,86 +22,71 @@ app.get("/api/media/extract/:videoId", async (req, res) => {
     return;
   }
 
-  try {
-    console.log(`Extracting streams for ${videoId}...`);
-    const result = await extractStreams(videoId);
-    console.log(`Extraction complete: ${result.title}`);
+  // Set up SSE
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  });
 
-    res.json({
+  const send = (event: string, data: unknown) => {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  try {
+    // Step 1: Extract media
+    send("progress", { stage: "extracting", message: "Starting extraction..." });
+    const result = await extractStreams(videoId, (message) => {
+      send("progress", { stage: "extracting", message });
+    });
+
+    const media = {
       url: `/api/media/stream/${videoId}`,
       videoUrl: `/api/media/stream/${videoId}/video`,
       audioUrl: `/api/media/stream/${videoId}/audio`,
       title: result.title,
       duration: result.duration,
+    };
+    send("media", media);
+
+    // Step 2: Fetch transcript
+    send("progress", { stage: "transcribing", message: "Fetching transcript..." });
+    const transcript = await fetchTranscript(videoId, (message) => {
+      send("progress", { stage: "transcribing", message });
     });
-  } catch (err) {
-    console.error("Extraction failed:", err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Extraction failed",
+    send("progress", {
+      stage: "transcribing",
+      message: `Transcript loaded — ${transcript.length} entries`,
     });
-  }
-});
 
-// Fetch transcript for a video
-app.get("/api/media/transcript/:videoId", async (req, res) => {
-  const { videoId } = req.params;
+    // Step 3: Check analysis cache
+    const cachePath = path.resolve(
+      import.meta.dirname,
+      `../cache/${videoId}.analysis.json`,
+    );
 
-  if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
-    res.status(400).json({ error: "Invalid video ID" });
-    return;
-  }
+    let analysis;
+    if (fs.existsSync(cachePath)) {
+      send("progress", { stage: "analyzing", message: "Found cached analysis" });
+      analysis = JSON.parse(fs.readFileSync(cachePath, "utf-8"));
+    } else {
+      send("progress", { stage: "analyzing", message: "Starting AI analysis..." });
+      analysis = await analyzeTranscript(result.title, transcript, (message) => {
+        send("progress", { stage: "analyzing", message });
+      });
 
-  try {
-    console.log(`Fetching transcript for ${videoId}...`);
-    const transcript = await fetchTranscript(videoId);
-    console.log(`Transcript: ${transcript.length} entries`);
-    res.json({ transcript });
-  } catch (err) {
-    console.error("Transcript failed:", err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Transcript failed",
-    });
-  }
-});
-
-// Analyze transcript with Claude (cached per videoId)
-app.post("/api/media/analyze", async (req, res) => {
-  const { videoId, title, transcript } = req.body;
-
-  if (!title || !transcript) {
-    res.status(400).json({ error: "title and transcript required" });
-    return;
-  }
-
-  // Check cache if videoId provided
-  const cachePath = videoId
-    ? path.resolve(import.meta.dirname, `../cache/${videoId}.analysis.json`)
-    : null;
-
-  if (cachePath && fs.existsSync(cachePath)) {
-    console.log(`Analysis cache hit for ${videoId}`);
-    const cached = JSON.parse(fs.readFileSync(cachePath, "utf-8"));
-    res.json(cached);
-    return;
-  }
-
-  try {
-    console.log(`Analyzing "${title}" (${transcript.length} entries)...`);
-    const analysis = await analyzeTranscript(title, transcript);
-    console.log(`Analysis complete: ${analysis.segments.length} segments`);
-
-    // Cache result
-    if (cachePath) {
+      // Cache result
       fs.writeFileSync(cachePath, JSON.stringify(analysis, null, 2));
-      console.log(`Analysis cached to ${cachePath}`);
     }
 
-    res.json(analysis);
+    send("analysis", analysis);
+    send("done", {});
+    res.end();
   } catch (err) {
-    console.error("Analysis failed:", err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Analysis failed",
+    send("error", {
+      message: err instanceof Error ? err.message : "Processing failed",
     });
+    res.end();
   }
 });
 
