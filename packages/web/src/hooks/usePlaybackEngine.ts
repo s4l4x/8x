@@ -102,18 +102,22 @@ export function usePlaybackEngine({
       if (isNewSegment && !skipCooldownRef.current) {
         currentSegRef.current = seg.id;
         const next = findNextPlayableSegment(analysis.segments, seg.endTime, overrides);
-        if (next) {
-          skipCooldownRef.current = true;
-          onOverlayChange({
-            visible: true,
-            text: seg.summary || `Skipping ${seg.type} content`,
-            type: "skip",
-          });
-          setTimeout(() => {
+        skipCooldownRef.current = true;
+        onOverlayChange({
+          visible: true,
+          text: seg.summary || `Skipping ${seg.type} content`,
+          type: "skip",
+        });
+        setTimeout(() => {
+          if (next) {
             video.currentTime = next.startTime;
-            skipCooldownRef.current = false;
-          }, 800);
-        }
+          } else {
+            // No more playable segments — skip to end
+            video.currentTime = video.duration;
+            video.pause();
+          }
+          skipCooldownRef.current = false;
+        }, 800);
       }
       return;
     }
