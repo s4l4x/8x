@@ -105,19 +105,11 @@ export function Player({ videoId, onBack }: PlayerProps) {
                 <motion.div
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center gap-3 flex-shrink-0"
+                  className="flex-shrink-0"
                 >
-                  <span className="text-8x-muted text-sm">
-                    {formatDuration(analysis.totalDuration)} &rarr;{" "}
-                    {formatDuration(analysis.estimatedSmartDuration)}
-                  </span>
                   <div className="px-3 py-1.5 bg-8x-pink/15 border border-8x-pink/30 rounded-full">
                     <span className="text-8x-pink text-sm font-semibold">
-                      {formatSpeedUp(
-                        analysis.totalDuration,
-                        analysis.estimatedSmartDuration,
-                      )}{" "}
-                      faster
+                      {(analysis.totalDuration / analysis.estimatedSmartDuration).toFixed(1)}x faster
                     </span>
                   </div>
                 </motion.div>
@@ -204,15 +196,4 @@ export function Player({ videoId, onBack }: PlayerProps) {
       </div>
     </div>
   );
-}
-
-function formatDuration(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
-function formatSpeedUp(original: number, smart: number): string {
-  if (smart <= 0) return "∞x";
-  return `${(original / smart).toFixed(1)}x`;
 }
