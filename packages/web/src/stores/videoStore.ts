@@ -17,6 +17,8 @@ interface VideoState {
   reset: () => void;
 }
 
+let cleanupSSE: (() => void) | null = null;
+
 export const useVideoStore = create<VideoState>((set, get) => ({
   videoId: null,
   media: null,
@@ -26,6 +28,7 @@ export const useVideoStore = create<VideoState>((set, get) => ({
   error: null,
 
   loadVideo: (videoId: string) => {
+    cleanupSSE?.();
     set({
       videoId,
       status: "extracting",
@@ -35,7 +38,7 @@ export const useVideoStore = create<VideoState>((set, get) => ({
       analysis: null,
     });
 
-    processVideo(videoId, {
+    cleanupSSE = processVideo(videoId, {
       onProgress: (stage, message) => {
         set({ status: stage, progressMessage: message });
       },
@@ -70,7 +73,9 @@ export const useVideoStore = create<VideoState>((set, get) => ({
     });
   },
 
-  reset: () =>
+  reset: () => {
+    cleanupSSE?.();
+    cleanupSSE = null;
     set({
       videoId: null,
       media: null,
@@ -78,5 +83,6 @@ export const useVideoStore = create<VideoState>((set, get) => ({
       status: "idle",
       progressMessage: null,
       error: null,
-    }),
+    });
+  },
 }));
