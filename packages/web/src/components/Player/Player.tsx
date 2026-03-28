@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { VideoElement } from "./VideoElement";
 import { OverlayLayer } from "./OverlayLayer";
 import { PlaybackControls } from "../Controls/PlaybackControls";
-import { Timeline } from "../Timeline/Timeline";
 import { useVideoStore } from "../../stores/videoStore";
 
 import {
@@ -140,8 +139,30 @@ export function Player({ videoId, onBack }: PlayerProps) {
                 smartMode={smartMode}
                 onToggleSmartMode={() => setSmartMode((m) => !m)}
                 analysisReady={!!analysis}
+                segments={analysis?.segments}
               />
             </div>
+
+            {/* Segment legend */}
+            {analysis && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mt-3 flex gap-4 text-xs"
+              >
+                {([
+                  ["key", "bg-8x-cyan", "Key"],
+                  ["context", "bg-8x-blue", "Context"],
+                  ["tangential", "bg-8x-yellow", "Tangential"],
+                  ["filler", "bg-[#5a5a66]", "Filler"],
+                ] as const).map(([type, color, label]) => (
+                  <div key={type} className="flex items-center gap-1.5">
+                    <div className={`w-2.5 h-2.5 rounded-full ${color}`} />
+                    <span className="text-8x-muted">{label}</span>
+                  </div>
+                ))}
+              </motion.div>
+            )}
           </>
         )}
 
@@ -180,19 +201,6 @@ export function Player({ videoId, onBack }: PlayerProps) {
             )}
         </AnimatePresence>
 
-        {/* Analysis results */}
-        {analysis && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4"
-          >
-            <Timeline
-              segments={analysis.segments}
-              duration={analysis.totalDuration}
-            />
-          </motion.div>
-        )}
       </div>
     </div>
   );

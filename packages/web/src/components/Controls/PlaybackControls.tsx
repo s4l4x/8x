@@ -1,12 +1,21 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePlaybackStore } from "../../stores/playbackStore";
+import type { Segment } from "../../lib/types";
+
+const SEGMENT_COLORS: Record<Segment["type"], string> = {
+  key: "#06d6a0",       // 8x-cyan
+  context: "#3b82f6",   // 8x-blue
+  filler: "#5a5a66",
+  tangential: "#ffd166", // 8x-yellow
+};
 
 interface PlaybackControlsProps {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   smartMode: boolean;
   onToggleSmartMode: () => void;
   analysisReady: boolean;
+  segments?: Segment[];
 }
 
 export function PlaybackControls({
@@ -14,6 +23,7 @@ export function PlaybackControls({
   smartMode,
   onToggleSmartMode,
   analysisReady,
+  segments,
 }: PlaybackControlsProps) {
   const { playing, currentTime, duration, speed, setPlaying } =
     usePlaybackStore();
@@ -192,18 +202,60 @@ export function PlaybackControls({
             <div
               ref={scrubberRef}
               onMouseDown={onScrubStart}
-              className="group relative h-6 flex items-center cursor-pointer mb-2"
+              className="group/scrub relative cursor-pointer mb-2"
             >
-              {/* Track */}
-              <div className="absolute inset-x-0 h-1 group-hover:h-1.5 bg-white/20 rounded-full transition-all">
-                {/* Buffered — could add later */}
-                {/* Progress */}
+              {/* Track — thin by default, expands to full timeline on hover */}
+              <div className="relative h-1.5 group-hover/scrub:h-10 bg-white/20 rounded group-hover/scrub:rounded-lg transition-all duration-200 overflow-hidden">
+                {segments && segments.length > 0 ? (
+                  segments.map((seg) => {
+                    const left = (seg.startTime / duration) * 100;
+                    const width = ((seg.endTime - seg.startTime) / duration) * 100;
+                    const isPlayed = (seg.endTime / duration) * 100 <= progress;
+                    const isPartial = left < progress && !isPlayed;
+
+                    return (
+                      <div
+                        key={seg.id}
+                        className="absolute inset-y-0 transition-all hover:brightness-125"
+                        style={{
+                          left: `${left}%`,
+                          width: `${width}%`,
+                          backgroundColor: SEGMENT_COLORS[seg.type],
+                          opacity: isPlayed ? 0.85 : isPartial ? 0.6 : 0.3,
+                        }}
+                        title={`${seg.type}: ${seg.summary}`}
+                      >
+                        {/* Importance bar — visible when expanded */}
+                        <div
+                          className="absolute bottom-0 left-0 right-0 bg-white/20 border-t border-white/40 opacity-0 group-hover/scrub:opacity-100 transition-opacity"
+                          style={{ height: `${seg.importance * 100}%` }}
+                        />
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div
+                    className="h-full bg-8x-pink rounded-full"
+                    style={{ width: `${progress}%` }}
+                  />
+                )}
+
+                {/* Played overlay — brightens played region for non-segment fallback is handled above */}
+                {segments && segments.length > 0 && (
+                  <div
+                    className="absolute inset-y-0 left-0 bg-white/15 pointer-events-none"
+                    style={{ width: `${progress}%` }}
+                  />
+                )}
+
+                {/* Playhead pill */}
                 <div
-                  className="h-full bg-8x-pink rounded-full relative"
-                  style={{ width: `${progress}%` }}
+                  className="absolute inset-y-0 z-10 pointer-events-none flex items-center justify-center -translate-x-1/2"
+                  style={{ left: `${progress}%` }}
                 >
-                  {/* Thumb */}
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-8x-pink rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg" />
+                  <div className="w-1.5 h-full rounded-full bg-white border border-white shadow-[0_0_4px_rgba(255,255,255,0.5)] flex items-center justify-center overflow-hidden">
+                    <div className="w-full h-full bg-[#FF4059]" />
+                  </div>
                 </div>
               </div>
             </div>
