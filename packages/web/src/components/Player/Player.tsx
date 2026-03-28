@@ -2,9 +2,10 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { VideoElement } from "./VideoElement";
 import { OverlayLayer } from "./OverlayLayer";
+import { PlaybackControls } from "../Controls/PlaybackControls";
 import { Timeline } from "../Timeline/Timeline";
 import { useVideoStore } from "../../stores/videoStore";
-import { usePlaybackStore } from "../../stores/playbackStore";
+
 import {
   usePlaybackEngine,
   type OverlayState,
@@ -23,7 +24,6 @@ const STATUS_LABELS: Record<string, string> = {
 
 export function Player({ videoId, onBack }: PlayerProps) {
   const { media, analysis, status, error, loadVideo } = useVideoStore();
-  const { speed } = usePlaybackStore();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [smartMode, setSmartMode] = useState(false);
   const [overlay, setOverlay] = useState<OverlayState>({
@@ -93,35 +93,26 @@ export function Player({ videoId, onBack }: PlayerProps) {
 
         {media && (
           <>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-8x-white">
-                {media.title}
-              </h2>
+            <h2 className="text-xl font-semibold text-8x-white mb-4">
+              {media.title}
+            </h2>
 
-              {/* 8x Mode Toggle */}
-              {analysis && (
-                <motion.button
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setSmartMode((m) => !m)}
-                  className={`px-4 py-2 rounded-full font-semibold text-sm transition-all ${
-                    smartMode
-                      ? "bg-8x-pink text-white shadow-lg shadow-8x-pink/25"
-                      : "bg-8x-surface border border-8x-border text-8x-muted hover:text-8x-white"
-                  }`}
-                >
-                  {smartMode ? "8x ON" : "8x OFF"}
-                </motion.button>
-              )}
-            </div>
-
-            <div className="relative w-full rounded-2xl overflow-hidden bg-8x-dark">
+            <div
+              data-player-root
+              className="relative w-full rounded-2xl overflow-hidden bg-8x-black select-none"
+            >
               <VideoElement ref={videoRef} url={media.url} />
-              {smartMode && (
-                <OverlayLayer overlay={overlay} speed={speed} />
-              )}
+
+              {/* Overlays — below controls so controls stay interactive */}
+              {smartMode && <OverlayLayer overlay={overlay} />}
+
+              {/* Custom controls */}
+              <PlaybackControls
+                videoRef={videoRef}
+                smartMode={smartMode}
+                onToggleSmartMode={() => setSmartMode((m) => !m)}
+                analysisReady={!!analysis}
+              />
             </div>
           </>
         )}

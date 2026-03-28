@@ -3,28 +3,11 @@ import type { OverlayState } from "../../hooks/usePlaybackEngine";
 
 interface OverlayLayerProps {
   overlay: OverlayState;
-  speed: number;
 }
 
-export function OverlayLayer({ overlay, speed }: OverlayLayerProps) {
+export function OverlayLayer({ overlay }: OverlayLayerProps) {
   return (
-    <div className="absolute inset-0 pointer-events-none flex flex-col justify-end p-4 gap-2">
-      {/* Speed indicator — always visible when speed !== 1 */}
-      <AnimatePresence>
-        {speed > 1.1 && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="absolute top-4 right-4 px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-full"
-          >
-            <span className="text-8x-cyan font-mono font-bold text-sm">
-              {speed.toFixed(1)}x
-            </span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
+    <div className="absolute inset-0 pointer-events-none flex flex-col justify-center items-start p-6 pb-20">
       {/* Summary/skip overlay */}
       <AnimatePresence>
         {overlay.visible && overlay.text && (

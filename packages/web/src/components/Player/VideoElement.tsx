@@ -37,7 +37,6 @@ export const VideoElement = forwardRef<HTMLVideoElement, VideoElementProps>(
         ref={ref}
         src={url}
         className="w-full aspect-video"
-        controls
         playsInline
       />
     );
