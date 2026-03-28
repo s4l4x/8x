@@ -34,7 +34,9 @@ export function usePlaybackEngine({
   const currentSpeedRef = useRef(1);
   const rafRef = useRef<number>(0);
   const skipCooldownRef = useRef(false);
-  const { setSpeed } = usePlaybackStore();
+  const { setSpeed, speedOverrides } = usePlaybackStore();
+  const speedOverridesRef = useRef(speedOverrides);
+  speedOverridesRef.current = speedOverrides;
 
   // Smooth speed ramping
   const rampSpeed = useCallback(() => {
@@ -77,6 +79,7 @@ export function usePlaybackEngine({
 
     const time = video.currentTime;
     const seg = findSegment(analysis.segments, time);
+    const overrides = speedOverridesRef.current;
 
     if (!seg) {
       // In a gap — play normally
@@ -89,36 +92,41 @@ export function usePlaybackEngine({
       return;
     }
 
-    // Same segment — no change needed
-    if (seg.id === currentSegRef.current) return;
-
-    // New segment entered
-    currentSegRef.current = seg.id;
+    const isNewSegment = seg.id !== currentSegRef.current;
+    const overrideSpeed = overrides[seg.type];
     const strategy = seg.playbackStrategy;
 
-    if (strategy.action === "skip" && !skipCooldownRef.current) {
-      // Skip: seek to next non-skip segment
-      const next = findNextPlayableSegment(analysis.segments, seg.endTime);
-      if (next) {
-        skipCooldownRef.current = true;
-        onOverlayChange({
-          visible: true,
-          text: seg.summary || `Skipping ${seg.type} content`,
-          type: "skip",
-        });
-
-        // Brief flash of skip overlay, then seek
-        setTimeout(() => {
-          video.currentTime = next.startTime;
-          skipCooldownRef.current = false;
-        }, 800);
+    // Always update speed to reflect current override (even mid-segment)
+    if (!isFinite(overrideSpeed)) {
+      // Skip
+      if (isNewSegment && !skipCooldownRef.current) {
+        currentSegRef.current = seg.id;
+        const next = findNextPlayableSegment(analysis.segments, seg.endTime, overrides);
+        if (next) {
+          skipCooldownRef.current = true;
+          onOverlayChange({
+            visible: true,
+            text: seg.summary || `Skipping ${seg.type} content`,
+            type: "skip",
+          });
+          setTimeout(() => {
+            video.currentTime = next.startTime;
+            skipCooldownRef.current = false;
+          }, 800);
+        }
       }
       return;
     }
 
-    // Speed change
-    const speed = strategy.speed ?? 1;
-    setTargetSpeed(speed);
+    // Apply speed — always, so mid-segment override changes take effect
+    if (targetSpeedRef.current !== overrideSpeed || isNewSegment) {
+      setTargetSpeed(overrideSpeed);
+    }
+
+    if (!isNewSegment) return;
+
+    // New segment entered — handle overlay and volume
+    currentSegRef.current = seg.id;
 
     // Volume fade
     video.volume = Math.max(0, Math.min(1, strategy.audioFade ?? 1));
@@ -166,11 +174,12 @@ export function usePlaybackEngine({
 function findNextPlayableSegment(
   segments: Segment[],
   afterTime: number,
+  speedOverrides: Record<string, number>,
 ): Segment | null {
   return (
     segments.find(
       (s) =>
-        s.startTime >= afterTime && s.playbackStrategy.action !== "skip",
+        s.startTime >= afterTime && isFinite(speedOverrides[s.type]),
     ) ?? null
   );
 }
