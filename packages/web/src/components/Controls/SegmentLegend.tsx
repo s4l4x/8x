@@ -39,7 +39,6 @@ function LegendItem({
   const { speedOverrides, setSpeedOverride } = usePlaybackStore();
   const speed = speedOverrides[type];
   const [hovering, setHovering] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
   const leaveTimeout = useRef<number>(0);
 
   const handleMouseEnter = () => {
@@ -51,60 +50,99 @@ function LegendItem({
     leaveTimeout.current = window.setTimeout(() => setHovering(false), 300);
   };
 
-  // Cleanup timeout on unmount
   useEffect(() => () => clearTimeout(leaveTimeout.current), []);
+
+  const sliderId = `slider-${type}`;
 
   return (
     <div
-      ref={containerRef}
-      className="relative flex items-center gap-1.5"
+      className="flex items-center gap-1"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div
-        className="w-2.5 h-2.5 rounded-full"
-        style={{ backgroundColor: bg }}
-      />
-      <span className="text-8x-muted">{label}</span>
-      <span className="text-8x-muted/60 font-mono">{formatSpeed(speed)}x</span>
+      <style>{`
+        #${sliderId} {
+          -webkit-appearance: none;
+          appearance: none;
+          background: transparent;
+          cursor: pointer;
+        }
+        #${sliderId}::-webkit-slider-runnable-track {
+          height: 3px;
+          border-radius: 1.5px;
+          background: rgba(255,255,255,0.15);
+        }
+        #${sliderId}::-moz-range-track {
+          height: 3px;
+          border-radius: 1.5px;
+          background: rgba(255,255,255,0.15);
+        }
+        #${sliderId}::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background: ${bg};
+          border: none;
+          cursor: pointer;
+          box-shadow: 0 0 4px rgba(0,0,0,0.3);
+          margin-top: -3.5px;
+        }
+        #${sliderId}::-moz-range-thumb {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background: ${bg};
+          border: none;
+          cursor: pointer;
+          box-shadow: 0 0 4px rgba(0,0,0,0.3);
+        }
+      `}</style>
 
-      {/* Slider popover */}
-      {hovering && (
-        <div
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-8x-surface border border-8x-border rounded-lg shadow-xl z-50 flex items-center gap-2 min-w-[180px]"
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-        >
-          <span className="text-8x-muted text-[10px] font-mono w-6 text-right">
-            0.5x
-          </span>
-          <input
-            type="range"
-            min={MIN_SPEED}
-            max={MAX_SPEED}
-            step={0.25}
-            value={speedToSlider(speed)}
-            onChange={(e) => {
-              const val = parseFloat(e.target.value);
-              setSpeedOverride(type, sliderToSpeed(val));
-            }}
-            className="flex-1 accent-8x-pink cursor-pointer h-1"
-          />
-          <span className="text-8x-muted text-[10px] font-mono w-4">
-            8x
-          </span>
-          <span className="text-8x-white text-xs font-mono font-bold w-8 text-center">
-            {formatSpeed(speed)}x
-          </span>
-        </div>
-      )}
+      {/* Dot — always present, collapses to 0 width when slider is open */}
+      <div
+        className="rounded-full flex-shrink-0 transition-all duration-200"
+        style={{
+          backgroundColor: bg,
+          width: hovering ? 0 : 10,
+          height: hovering ? 0 : 10,
+          opacity: hovering ? 0 : 1,
+        }}
+      />
+
+      <span className="text-8x-muted whitespace-nowrap">{label}</span>
+
+      {/* Slider track — expands from 0 width */}
+      <input
+        id={sliderId}
+        type="range"
+        min={MIN_SPEED}
+        max={MAX_SPEED}
+        step={0.25}
+        value={speedToSlider(speed)}
+        onChange={(e) => {
+          const val = parseFloat(e.target.value);
+          setSpeedOverride(type, sliderToSpeed(val));
+        }}
+        className="transition-all duration-200 h-3"
+        style={{
+          width: hovering ? 96 : 0,
+          opacity: hovering ? 1 : 0,
+          overflow: "hidden",
+        }}
+      />
+
+      <span className="text-8x-muted/60 font-mono whitespace-nowrap">
+        {formatSpeed(speed)}x
+      </span>
     </div>
   );
 }
 
 export function SegmentLegend() {
   return (
-    <div className="flex gap-4 text-xs">
+    <div className="flex gap-4 text-xs items-center">
       {LEGEND_ITEMS.map((item) => (
         <LegendItem key={item.type} {...item} />
       ))}
