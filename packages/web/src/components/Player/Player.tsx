@@ -5,6 +5,7 @@ import { OverlayLayer } from "./OverlayLayer";
 import { PlaybackControls } from "../Controls/PlaybackControls";
 import { SegmentLegend } from "../Controls/SegmentLegend";
 import { useVideoStore } from "../../stores/videoStore";
+import { usePlaybackStore } from "../../stores/playbackStore";
 
 import {
   usePlaybackEngine,
@@ -24,6 +25,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 export function Player({ videoId, onBack }: PlayerProps) {
   const { media, analysis, status, error, loadVideo } = useVideoStore();
+  const speedOverrides = usePlaybackStore((s) => s.speedOverrides);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [smartMode, setSmartMode] = useState(false);
   const [overlay, setOverlay] = useState<OverlayState>({
@@ -110,7 +112,16 @@ export function Player({ videoId, onBack }: PlayerProps) {
                 >
                   <div className="px-3 py-1.5 bg-8x-pink/15 border border-8x-pink/30 rounded-full">
                     <span className="text-8x-pink text-sm font-semibold">
-                      {(analysis.totalDuration / analysis.estimatedSmartDuration).toFixed(1)}x faster
+                      {(() => {
+                        const smartDuration = analysis.segments.reduce((sum, seg) => {
+                          const speed = speedOverrides[seg.type];
+                          if (!isFinite(speed)) return sum;
+                          return sum + (seg.endTime - seg.startTime) / speed;
+                        }, 0);
+                        return smartDuration > 0
+                          ? (analysis.totalDuration / smartDuration).toFixed(1)
+                          : "∞";
+                      })()}x faster
                     </span>
                   </div>
                 </motion.div>
