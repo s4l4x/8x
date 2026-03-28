@@ -202,7 +202,7 @@ export function PlaybackControls({
             <div
               ref={scrubberRef}
               onMouseDown={onScrubStart}
-              className="group/scrub relative cursor-pointer mb-2"
+              className="group/scrub relative cursor-pointer py-1.5 -mt-1.5 mb-0.5"
             >
               {/* Track — thin by default, expands to full timeline on hover */}
               <div className="relative h-1.5 group-hover/scrub:h-10 bg-white/20 rounded group-hover/scrub:rounded-lg transition-all duration-200 overflow-hidden">
@@ -252,7 +252,7 @@ export function PlaybackControls({
 
               {/* Playhead — circle when compact, pill when expanded, sits above overflow-hidden track */}
               <div
-                className="absolute z-10 pointer-events-none -translate-x-1/2 top-1/2 -translate-y-1/2 w-3 h-3 group-hover/scrub:h-14 rounded-full bg-[#FF4059] border-2 border-white shadow-[0_0_6px_rgba(0,0,0,0.4)] transition-all duration-200"
+                className="absolute z-10 pointer-events-none -translate-x-1/2 top-1/2 -translate-y-1/2 w-4 h-4 group-hover/scrub:w-1.5 group-hover/scrub:h-14 rounded-full bg-white border-2 group-hover/scrub:border border-white shadow-[0_0_6px_rgba(0,0,0,0.4)] transition-all duration-200"
                 style={{ left: `${progress}%` }}
               />
             </div>
