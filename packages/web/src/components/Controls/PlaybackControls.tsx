@@ -10,6 +10,69 @@ const SEGMENT_COLORS: Record<Segment["type"], string> = {
   tangential: "#ffd166", // 8x-yellow
 };
 
+/**
+ * Compute a seek target that skips over skip-sections (Infinity speed segments),
+ * so e.g. seeking back 10s means 10s of *playable* content.
+ */
+function seekOverSkips(
+  from: number,
+  amount: number,
+  forward: boolean,
+  segments: Segment[],
+  speedOverrides: Record<string, number>,
+): number {
+  const isSkip = (s: Segment) => !isFinite(speedOverrides[s.type]);
+  let remaining = amount;
+  let pos = from;
+
+  if (forward) {
+    // Walk forward, accumulating only playable time
+    const sorted = segments.filter((s) => s.endTime > from).sort((a, b) => a.startTime - b.startTime);
+    for (const seg of sorted) {
+      if (isSkip(seg)) {
+        // Jump over the entire skip segment
+        if (pos < seg.startTime) {
+          // Playable gap before this skip
+          const gap = seg.startTime - pos;
+          if (remaining <= gap) return pos + remaining;
+          remaining -= gap;
+        }
+        pos = Math.max(pos, seg.endTime);
+      } else {
+        // Playable segment
+        const segStart = Math.max(pos, seg.startTime);
+        const available = seg.endTime - segStart;
+        if (remaining <= available) return segStart + remaining;
+        remaining -= available;
+        pos = seg.endTime;
+      }
+    }
+    return pos + remaining;
+  } else {
+    // Walk backward, accumulating only playable time
+    const sorted = segments.filter((s) => s.startTime < from).sort((a, b) => b.endTime - a.endTime);
+    for (const seg of sorted) {
+      if (isSkip(seg)) {
+        // Jump over the entire skip segment
+        if (pos > seg.endTime) {
+          const gap = pos - seg.endTime;
+          if (remaining <= gap) return pos - remaining;
+          remaining -= gap;
+        }
+        pos = Math.min(pos, seg.startTime);
+      } else {
+        // Playable segment
+        const segEnd = Math.min(pos, seg.endTime);
+        const available = segEnd - seg.startTime;
+        if (remaining <= available) return segEnd - remaining;
+        remaining -= available;
+        pos = seg.startTime;
+      }
+    }
+    return Math.max(0, pos - remaining);
+  }
+}
+
 interface PlaybackControlsProps {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   smartMode: boolean;
@@ -130,11 +193,22 @@ export function PlaybackControls({
           togglePlay();
           break;
         case "ArrowRight":
-          if (videoRef.current) videoRef.current.currentTime += 10;
+        case "ArrowLeft": {
+          const v = videoRef.current;
+          if (!v) break;
+          const seekAmount = 10;
+          const forward = e.key === "ArrowRight";
+          const { speedOverrides } = usePlaybackStore.getState();
+          const target = smartMode && segments
+            ? seekOverSkips(v.currentTime, seekAmount, forward, segments, speedOverrides)
+            : Math.max(0, v.currentTime + (forward ? seekAmount : -seekAmount));
+          const clamped = Math.max(0, Math.min(v.duration || Infinity, target));
+          setScrubbing(true);
+          v.currentTime = clamped;
+          setCurrentTime(clamped);
+          v.addEventListener("seeked", () => setScrubbing(false), { once: true });
           break;
-        case "ArrowLeft":
-          if (videoRef.current) videoRef.current.currentTime -= 10;
-          break;
+        }
         case "m":
           toggleMute();
           break;
@@ -146,7 +220,7 @@ export function PlaybackControls({
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [togglePlay, toggleMute, toggleFullscreen, videoRef]);
+  }, [togglePlay, toggleMute, toggleFullscreen, videoRef, setScrubbing]);
 
   // Auto-hide controls
   useEffect(() => {
