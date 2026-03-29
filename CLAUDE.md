@@ -67,6 +67,10 @@ Analysis caching avoids redundant Claude API calls during dev. On cache hit you'
 
 Requires `ANTHROPIC_API_KEY` in root `.env` (see `.env.example`). Media server loads it via dotenv from `../../../.env`.
 
+## Testing
+
+When adding or fixing user-facing behavior, add a corresponding check to the smoke test skill (`.claude/skills/smoke-test/SKILL.md`). Automated checks go in Phase 1, things requiring human judgment go in Phase 2's manual checklist.
+
 ## Conventions
 
 - ESM imports with `.js` extensions in media-server/worker (Node ESM resolution)

@@ -61,6 +61,8 @@ Once video is loaded, verify these elements exist:
   - ArrowLeft → should rewind currentTime by ~10s
   - 'm' → should toggle mute
 - **VERIFY** each shortcut has the expected effect by reading video state after
+- Pause the video, note the playhead position in the UI, then press ArrowRight
+- **VERIFY**: The scrubber playhead visually moves to the new position while still paused
 
 ### 1.6 Scrubber Seek
 - Click at roughly 50% of the scrubber track width
