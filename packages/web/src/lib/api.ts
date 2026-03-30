@@ -7,6 +7,7 @@ type AnalysisStage = "extracting" | "transcribing" | "analyzing";
 interface SSEProgressEvent {
   stage: AnalysisStage;
   message: string;
+  progress?: number;
 }
 
 interface AnalysisResponse {
@@ -16,7 +17,7 @@ interface AnalysisResponse {
 }
 
 interface ProcessCallbacks {
-  onProgress: (stage: AnalysisStage, message: string) => void;
+  onProgress: (stage: AnalysisStage, message: string, progress?: number) => void;
   onMedia: (media: MediaStreams) => void;
   onAnalysis: (analysis: AnalysisResponse) => void;
   onError: (error: string) => void;
@@ -31,7 +32,7 @@ export function processVideo(
 
   eventSource.addEventListener("progress", (e) => {
     const data: SSEProgressEvent = JSON.parse(e.data);
-    callbacks.onProgress(data.stage, data.message);
+    callbacks.onProgress(data.stage, data.message, data.progress);
   });
 
   eventSource.addEventListener("media", (e) => {

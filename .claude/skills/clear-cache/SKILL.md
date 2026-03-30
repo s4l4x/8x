@@ -10,15 +10,21 @@ Delete all cached files from `packages/media-server/cache/`. Accepts an optional
 If `$ARGUMENTS` contains a videoId (11-character string), delete only files matching that videoId. Otherwise delete all cached files.
 
 ```bash
-CACHE_DIR="packages/media-server/cache"
+CACHE_DIR="$SKILL_DIR/../../../packages/media-server/cache"
 
 if [ -n "$ARGUMENTS" ]; then
+  # Validate videoId: must be exactly 11 alphanumeric/dash/underscore characters
+  if ! echo "$ARGUMENTS" | grep -qE '^[a-zA-Z0-9_-]{11}$'; then
+    echo "Error: Invalid video ID '$ARGUMENTS'. Must be 11 characters [a-zA-Z0-9_-]."
+    exit 1
+  fi
   echo "Clearing cache for video: $ARGUMENTS"
-  rm -f "$CACHE_DIR/$ARGUMENTS".*
+  find "$CACHE_DIR" -maxdepth 1 -name "$ARGUMENTS.*" -type f -delete
 else
   echo "Clearing all cached files..."
-  rm -f "$CACHE_DIR"/*.mp4 "$CACHE_DIR"/*.m4a "$CACHE_DIR"/*.json3 "$CACHE_DIR"/*.json
+  find "$CACHE_DIR" -maxdepth 1 -type f \( -name "*.mp4" -o -name "*.m4a" -o -name "*.json3" -o -name "*.json" \) -delete
 fi
-```
 
-After running, list remaining files in the cache directory to confirm.
+echo "Remaining files:"
+ls "$CACHE_DIR"/ 2>/dev/null || echo "(empty)"
+```

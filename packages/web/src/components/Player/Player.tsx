@@ -24,7 +24,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export function Player({ videoId, onBack }: PlayerProps) {
-  const { media, analysis, status, progressMessage, error, loadVideo } = useVideoStore();
+  const { media, analysis, status, progressMessage, progressPercent, error, loadVideo } = useVideoStore();
   const speedOverrides = usePlaybackStore((s) => s.speedOverrides);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [smartMode, setSmartMode] = useState(false);
@@ -61,14 +61,31 @@ export function Player({ videoId, onBack }: PlayerProps) {
   }, [status, analysis]);
 
   if (status === "extracting" && !media) {
+    const hasPercent = progressPercent != null && progressPercent > 0;
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-          className="w-12 h-12 border-4 border-8x-pink border-t-transparent rounded-full"
-        />
-        <p className="text-8x-muted">{progressMessage || "Extracting streams..."}</p>
+        {hasPercent ? (
+          <>
+            <div className="w-64 h-2 bg-8x-surface rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-8x-pink rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${progressPercent}%` }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+              />
+            </div>
+            <p className="text-8x-muted text-sm">{progressMessage}</p>
+          </>
+        ) : (
+          <>
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+              className="w-12 h-12 border-4 border-8x-pink border-t-transparent rounded-full"
+            />
+            <p className="text-8x-muted">{progressMessage || "Extracting streams..."}</p>
+          </>
+        )}
       </div>
     );
   }

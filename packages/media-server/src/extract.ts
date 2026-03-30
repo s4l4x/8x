@@ -20,33 +20,41 @@ function ensureCacheDir() {
 
 function runYtDlp(
   args: string[],
-  onProgress?: (message: string) => void,
+  onProgress?: (message: string, progress?: number) => void,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const proc = spawn("yt-dlp", args);
     let stdout = "";
     let stderr = "";
-    proc.stdout.on("data", (d) => (stdout += d));
+
+    const parseProgress = (chunk: string) => {
+      if (!onProgress) return;
+      // Parse yt-dlp progress lines like "[download]  45.2% of ~100.00MiB at 5.00MiB/s ETA 00:10"
+      const dlMatch = chunk.match(
+        /\[download\]\s+([\d.]+)%\s+of\s+~?([\d.]+\w+)(?:\s+at\s+([\d.]+\w+\/s))?(?:\s+ETA\s+(\S+))?/,
+      );
+      if (dlMatch) {
+        const [, pct, size, speed, eta] = dlMatch;
+        let msg = `Downloading: ${pct}% of ${size}`;
+        if (speed) msg += ` at ${speed}`;
+        if (eta) msg += ` — ${eta} remaining`;
+        onProgress(msg, parseFloat(pct));
+      }
+      // Parse merger step
+      if (chunk.includes("[Merger]")) {
+        onProgress("Merging video and audio streams...", 100);
+      }
+    };
+
+    proc.stdout.on("data", (d) => {
+      const chunk = d.toString();
+      stdout += chunk;
+      parseProgress(chunk);
+    });
     proc.stderr.on("data", (d) => {
       const chunk = d.toString();
       stderr += chunk;
-      if (onProgress) {
-        // Parse yt-dlp progress lines like "[download]  45.2% of ~100.00MiB at 5.00MiB/s ETA 00:10"
-        const dlMatch = chunk.match(
-          /\[download\]\s+([\d.]+)%\s+of\s+~?([\d.]+\w+)(?:\s+at\s+([\d.]+\w+\/s))?(?:\s+ETA\s+(\S+))?/,
-        );
-        if (dlMatch) {
-          const [, pct, size, speed, eta] = dlMatch;
-          let msg = `Downloading: ${pct}% of ${size}`;
-          if (speed) msg += ` at ${speed}`;
-          if (eta) msg += ` — ${eta} remaining`;
-          onProgress(msg);
-        }
-        // Parse merger step
-        if (chunk.includes("[Merger]")) {
-          onProgress("Merging video and audio streams...");
-        }
-      }
+      parseProgress(chunk);
     });
     proc.on("close", (code) => {
       if (code !== 0) {
@@ -72,7 +80,7 @@ export async function getVideoInfo(
 
 export async function extractStreams(
   videoId: string,
-  onProgress?: (message: string) => void,
+  onProgress?: (message: string, progress?: number) => void,
 ): Promise<ExtractResult> {
   ensureCacheDir();
 
@@ -95,6 +103,7 @@ export async function extractStreams(
     [
       "-f", "bestvideo[vcodec^=avc1]+bestaudio[acodec^=mp4a]/best[ext=mp4]/best",
       "--merge-output-format", "mp4",
+      "--newline",
       "-o", combinedPath,
       "--no-playlist",
       url,

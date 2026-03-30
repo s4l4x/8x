@@ -35,9 +35,9 @@ app.get("/api/media/process/:videoId", async (req, res) => {
 
   try {
     // Step 1: Extract media
-    send("progress", { stage: "extracting", message: "Starting extraction..." });
-    const result = await extractStreams(videoId, (message) => {
-      send("progress", { stage: "extracting", message });
+    send("progress", { stage: "extracting", message: "Starting extraction...", progress: 0 });
+    const result = await extractStreams(videoId, (message, progress) => {
+      send("progress", { stage: "extracting", message, progress });
     });
 
     const media = {

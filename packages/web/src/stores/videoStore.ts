@@ -11,6 +11,7 @@ interface VideoState {
   analysis: VideoAnalysis | null;
   status: AnalysisStatus;
   progressMessage: string | null;
+  progressPercent: number | null;
   error: string | null;
 
   loadVideo: (videoId: string) => void;
@@ -25,6 +26,7 @@ export const useVideoStore = create<VideoState>((set, get) => ({
   analysis: null,
   status: "idle",
   progressMessage: null,
+  progressPercent: null,
   error: null,
 
   loadVideo: (videoId: string) => {
@@ -33,14 +35,15 @@ export const useVideoStore = create<VideoState>((set, get) => ({
       videoId,
       status: "extracting",
       progressMessage: "Starting extraction...",
+      progressPercent: null,
       error: null,
       media: null,
       analysis: null,
     });
 
     cleanupSSE = processVideo(videoId, {
-      onProgress: (stage, message) => {
-        set({ status: stage, progressMessage: message });
+      onProgress: (stage, message, progress) => {
+        set({ status: stage, progressMessage: message, progressPercent: progress ?? null });
       },
 
       onMedia: (media) => {
@@ -60,7 +63,7 @@ export const useVideoStore = create<VideoState>((set, get) => ({
           estimatedSmartDuration: raw.estimatedSmartDuration,
         };
 
-        set({ analysis, status: "ready", progressMessage: null });
+        set({ analysis, status: "ready", progressMessage: null, progressPercent: null });
       },
 
       onError: (errorMessage) => {
@@ -68,6 +71,7 @@ export const useVideoStore = create<VideoState>((set, get) => ({
           error: errorMessage,
           status: "error",
           progressMessage: null,
+          progressPercent: null,
         });
       },
     });
@@ -82,6 +86,7 @@ export const useVideoStore = create<VideoState>((set, get) => ({
       analysis: null,
       status: "idle",
       progressMessage: null,
+      progressPercent: null,
       error: null,
     });
   },
