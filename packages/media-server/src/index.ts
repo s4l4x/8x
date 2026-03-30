@@ -13,6 +13,21 @@ const PORT = 3001;
 
 app.use(cors());
 
+// Task-based progress tracking
+interface Task {
+  id: string;
+  label: string;
+  status: "pending" | "active" | "done";
+  detail?: string;
+  weight: number; // relative weight for overall progress
+  progress: number; // 0-100 within this task
+}
+
+function computeOverall(tasks: Task[]): number {
+  const totalWeight = tasks.reduce((s, t) => s + t.weight, 0);
+  return tasks.reduce((s, t) => s + (t.progress / 100) * (t.weight / totalWeight) * 100, 0);
+}
+
 // Full pipeline with SSE progress reporting
 app.get("/api/media/process/:videoId", async (req, res) => {
   const { videoId } = req.params;
@@ -33,12 +48,58 @@ app.get("/api/media/process/:videoId", async (req, res) => {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
 
+  const tasks: Task[] = [
+    { id: "video", label: "Download video", status: "active", weight: 35, progress: 0 },
+    { id: "audio", label: "Download audio", status: "pending", weight: 30, progress: 0 },
+    { id: "merge", label: "Mux video & audio", status: "pending", weight: 5, progress: 0 },
+    { id: "metadata", label: "Fetch metadata", status: "pending", weight: 5, progress: 0 },
+    { id: "transcript", label: "Download transcript", status: "pending", weight: 10, progress: 0 },
+    { id: "analysis", label: "AI analysis", status: "pending", weight: 15, progress: 0 },
+  ];
+
+  const getTask = (id: string) => tasks.find((t) => t.id === id)!;
+
+  const emitProgress = () => {
+    send("progress", {
+      overallProgress: Math.round(computeOverall(tasks)),
+      tasks: tasks.map(({ id, label, status, detail }) => ({ id, label, status, detail })),
+    });
+  };
+
+  const markActive = (id: string, detail?: string) => {
+    const t = getTask(id);
+    t.status = "active";
+    t.detail = detail;
+    emitProgress();
+  };
+
+  const markDone = (id: string) => {
+    const t = getTask(id);
+    t.status = "done";
+    t.progress = 100;
+    t.detail = undefined;
+    emitProgress();
+  };
+
   try {
     // Step 1: Extract media
-    send("progress", { stage: "extracting", message: "Starting extraction...", progress: 0 });
-    const result = await extractStreams(videoId, (message, progress) => {
-      send("progress", { stage: "extracting", message, progress });
+    emitProgress();
+    const result = await extractStreams(videoId, (event) => {
+      const t = getTask(event.step);
+      t.status = "active";
+      t.progress = event.progress;
+      t.detail = event.detail;
+      if (event.progress >= 100) {
+        t.status = "done";
+        t.detail = undefined;
+      }
+      emitProgress();
     });
+
+    // Mark extraction tasks done
+    for (const id of ["video", "audio", "merge", "metadata"]) {
+      markDone(id);
+    }
 
     const media = {
       url: `/api/media/stream/${videoId}`,
@@ -50,16 +111,14 @@ app.get("/api/media/process/:videoId", async (req, res) => {
     send("media", media);
 
     // Step 2: Fetch transcript
-    send("progress", { stage: "transcribing", message: "Fetching transcript..." });
+    markActive("transcript", "Downloading captions...");
     const transcript = await fetchTranscript(videoId, (message) => {
-      send("progress", { stage: "transcribing", message });
+      getTask("transcript").detail = message;
+      emitProgress();
     });
-    send("progress", {
-      stage: "transcribing",
-      message: `Transcript loaded — ${transcript.length} entries`,
-    });
+    markDone("transcript");
 
-    // Step 3: Check analysis cache
+    // Step 3: Analysis
     const cachePath = path.resolve(
       import.meta.dirname,
       `../cache/${videoId}.analysis.json`,
@@ -67,17 +126,17 @@ app.get("/api/media/process/:videoId", async (req, res) => {
 
     let analysis;
     if (fs.existsSync(cachePath)) {
-      send("progress", { stage: "analyzing", message: "Found cached analysis" });
+      markActive("analysis", "Loading cached analysis");
       analysis = JSON.parse(fs.readFileSync(cachePath, "utf-8"));
     } else {
-      send("progress", { stage: "analyzing", message: "Starting AI analysis..." });
+      markActive("analysis", "Sending to Claude...");
       analysis = await analyzeTranscript(result.title, transcript, (message) => {
-        send("progress", { stage: "analyzing", message });
+        getTask("analysis").detail = message;
+        emitProgress();
       });
-
-      // Cache result
       fs.writeFileSync(cachePath, JSON.stringify(analysis, null, 2));
     }
+    markDone("analysis");
 
     send("analysis", analysis);
     send("done", {});

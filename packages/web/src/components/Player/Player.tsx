@@ -17,14 +17,8 @@ interface PlayerProps {
   onBack: () => void;
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  extracting: "Extracting streams",
-  transcribing: "Fetching transcript",
-  analyzing: "Analyzing with AI",
-};
-
 export function Player({ videoId, onBack }: PlayerProps) {
-  const { media, analysis, status, progressMessage, progressPercent, error, loadVideo } = useVideoStore();
+  const { media, analysis, status, overallProgress, tasks, error, loadVideo } = useVideoStore();
   const speedOverrides = usePlaybackStore((s) => s.speedOverrides);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [smartMode, setSmartMode] = useState(false);
@@ -60,31 +54,59 @@ export function Player({ videoId, onBack }: PlayerProps) {
     }
   }, [status, analysis]);
 
-  if (status === "extracting" && !media) {
-    const hasPercent = progressPercent != null && progressPercent > 0;
+  // Loading screen — shown before media is available
+  if (status === "processing" && !media) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        {hasPercent ? (
-          <>
-            <div className="w-64 h-2 bg-8x-surface rounded-full overflow-hidden">
-              <motion.div
-                className="h-full bg-8x-pink rounded-full"
-                initial={{ width: 0 }}
-                animate={{ width: `${progressPercent}%` }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-              />
-            </div>
-            <p className="text-8x-muted text-sm">{progressMessage}</p>
-          </>
-        ) : (
-          <>
+      <div className="flex flex-col items-center justify-center min-h-screen gap-6 px-4">
+        {/* Overall progress bar */}
+        <div className="w-80 flex flex-col gap-2">
+          <div className="flex justify-between text-xs text-8x-muted">
+            <span>Preparing video</span>
+            <span className="tabular-nums">{overallProgress}%</span>
+          </div>
+          <div className="w-full h-2 bg-8x-surface rounded-full overflow-hidden">
             <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-              className="w-12 h-12 border-4 border-8x-pink border-t-transparent rounded-full"
+              className="h-full bg-8x-pink rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: `${overallProgress}%` }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
             />
-            <p className="text-8x-muted">{progressMessage || "Extracting streams..."}</p>
-          </>
+          </div>
+        </div>
+
+        {/* Task list */}
+        {tasks.length > 0 && (
+          <div className="w-80 flex flex-col gap-1.5">
+            {tasks.map((task) => (
+              <div key={task.id} className="flex items-baseline gap-2 text-xs" style={{ minHeight: "1.25rem" }}>
+                <span className="w-4 flex-shrink-0 text-center">
+                  {task.status === "done" ? (
+                    <span className="text-8x-cyan">✓</span>
+                  ) : task.status === "active" ? (
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                      className="w-3 h-3 border-[1.5px] border-8x-pink border-t-transparent rounded-full inline-block"
+                    />
+                  ) : (
+                    <span className="text-8x-muted/40">○</span>
+                  )}
+                </span>
+                <span className={`flex-shrink-0 ${
+                  task.status === "done"
+                    ? "text-8x-muted"
+                    : task.status === "active"
+                    ? "text-8x-white"
+                    : "text-8x-muted/50"
+                }`}>
+                  {task.label}
+                </span>
+                {task.detail && task.status === "active" && (
+                  <span className="text-8x-muted tabular-nums truncate ml-auto">{task.detail}</span>
+                )}
+              </div>
+            ))}
+          </div>
         )}
       </div>
     );
@@ -177,46 +199,58 @@ export function Player({ videoId, onBack }: PlayerProps) {
           </>
         )}
 
-        {/* Analysis status bar */}
+        {/* Processing status bar — shown after media is loaded while transcript/analysis runs */}
         <AnimatePresence>
-          {status !== "ready" &&
-            status !== "idle" &&
-            status !== "extracting" && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="mt-4 flex items-center gap-3 px-4 py-3 bg-8x-surface border border-8x-border rounded-xl"
-              >
-                {status !== "error" ? (
-                  <>
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{
-                        repeat: Infinity,
-                        duration: 1,
-                        ease: "linear",
-                      }}
-                      className="w-5 h-5 border-2 border-8x-cyan border-t-transparent rounded-full flex-shrink-0"
-                    />
-                    <div className="flex flex-col">
-                      <span className="text-8x-cyan text-sm font-medium">
-                        {STATUS_LABELS[status] || status}
-                      </span>
-                      {progressMessage && (
-                        <span className="text-8x-muted text-xs mt-0.5">
-                          {progressMessage}
-                        </span>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <span className="text-8x-orange text-sm">
-                    Analysis failed: {error} — video still plays normally
-                  </span>
-                )}
-              </motion.div>
-            )}
+          {status === "processing" && media && tasks.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mt-4 px-4 py-3 bg-8x-surface border border-8x-border rounded-xl"
+            >
+              {/* Compact progress bar */}
+              <div className="flex items-center gap-3 mb-2">
+                <div className="flex-1 h-1.5 bg-8x-darker rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-8x-cyan rounded-full"
+                    animate={{ width: `${overallProgress}%` }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                  />
+                </div>
+                <span className="text-8x-muted text-xs tabular-nums">{overallProgress}%</span>
+              </div>
+              {/* Active task detail */}
+              {tasks.filter((t) => t.status === "active").map((task) => (
+                <div key={task.id} className="flex items-center gap-2 text-sm">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                    className="w-4 h-4 border-2 border-8x-cyan border-t-transparent rounded-full flex-shrink-0"
+                  />
+                  <span className="text-8x-cyan text-sm font-medium">{task.label}</span>
+                  {task.detail && (
+                    <span className="text-8x-muted text-xs ml-auto">{task.detail}</span>
+                  )}
+                </div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Error bar — shown after media loaded if analysis fails */}
+        <AnimatePresence>
+          {status === "error" && media && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mt-4 px-4 py-3 bg-8x-surface border border-8x-border rounded-xl"
+            >
+              <span className="text-8x-orange text-sm">
+                Analysis failed: {error} — video still plays normally
+              </span>
+            </motion.div>
+          )}
         </AnimatePresence>
 
       </div>

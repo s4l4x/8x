@@ -2,12 +2,16 @@ import type { MediaStreams, VideoAnalysis, Segment } from "./types";
 
 const MEDIA_SERVER = "/api/media";
 
-type AnalysisStage = "extracting" | "transcribing" | "analyzing";
+export interface TaskStatus {
+  id: string;
+  label: string;
+  status: "pending" | "active" | "done";
+  detail?: string;
+}
 
 interface SSEProgressEvent {
-  stage: AnalysisStage;
-  message: string;
-  progress?: number;
+  overallProgress: number;
+  tasks: TaskStatus[];
 }
 
 interface AnalysisResponse {
@@ -17,7 +21,7 @@ interface AnalysisResponse {
 }
 
 interface ProcessCallbacks {
-  onProgress: (stage: AnalysisStage, message: string, progress?: number) => void;
+  onProgress: (overallProgress: number, tasks: TaskStatus[]) => void;
   onMedia: (media: MediaStreams) => void;
   onAnalysis: (analysis: AnalysisResponse) => void;
   onError: (error: string) => void;
@@ -32,7 +36,7 @@ export function processVideo(
 
   eventSource.addEventListener("progress", (e) => {
     const data: SSEProgressEvent = JSON.parse(e.data);
-    callbacks.onProgress(data.stage, data.message, data.progress);
+    callbacks.onProgress(data.overallProgress, data.tasks);
   });
 
   eventSource.addEventListener("media", (e) => {

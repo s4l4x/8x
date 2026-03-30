@@ -22,7 +22,7 @@ if [ -n "$ARGUMENTS" ]; then
   find "$CACHE_DIR" -maxdepth 1 -name "$ARGUMENTS.*" -type f -delete
 else
   echo "Clearing all cached files..."
-  find "$CACHE_DIR" -maxdepth 1 -type f \( -name "*.mp4" -o -name "*.m4a" -o -name "*.json3" -o -name "*.json" \) -delete
+  find "$CACHE_DIR" -maxdepth 1 -type f \( -name "*.mp4" -o -name "*.m4a" -o -name "*.json3" -o -name "*.json" -o -name "*.part" \) -delete
 fi
 
 echo "Remaining files:"
