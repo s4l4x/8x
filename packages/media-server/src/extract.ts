@@ -12,7 +12,7 @@ export interface ExtractResult {
   duration: number;
 }
 
-export type ExtractStep = "video" | "audio" | "merge" | "metadata";
+export type ExtractStep = "video" | "audio" | "merge";
 
 export interface ExtractEvent {
   step: ExtractStep;
@@ -110,12 +110,7 @@ export async function extractStreams(
 
   // Check cache
   if (fs.existsSync(combinedPath)) {
-    onEvent?.({ step: "video", progress: 100 });
-    onEvent?.({ step: "audio", progress: 100 });
-    onEvent?.({ step: "merge", progress: 100 });
-    onEvent?.({ step: "metadata", progress: 0 });
     const info = await getVideoInfo(videoId);
-    onEvent?.({ step: "metadata", progress: 100 });
     return { combinedPath, videoPath, audioPath, ...info };
   }
 
@@ -138,8 +133,6 @@ export async function extractStreams(
   }
 
   onEvent?.({ step: "merge", progress: 100 });
-  onEvent?.({ step: "metadata", progress: 0 });
   const info = await getVideoInfo(videoId);
-  onEvent?.({ step: "metadata", progress: 100 });
   return { combinedPath, videoPath, audioPath, ...info };
 }

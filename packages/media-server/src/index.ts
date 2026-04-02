@@ -48,13 +48,18 @@ app.get("/api/media/process/:videoId", async (req, res) => {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
 
+  // Check what's already cached
+  const cacheDir = path.resolve(import.meta.dirname, "../cache");
+  const hasVideo = fs.existsSync(path.join(cacheDir, `${videoId}.mp4`));
+  const hasTranscript = fs.existsSync(path.join(cacheDir, `${videoId}.en.json3`));
+  const hasAnalysis = fs.existsSync(path.join(cacheDir, `${videoId}.analysis.json`));
+
   const tasks: Task[] = [
-    { id: "video", label: "Download video", status: "active", weight: 35, progress: 0 },
-    { id: "audio", label: "Download audio", status: "pending", weight: 30, progress: 0 },
-    { id: "merge", label: "Mux video & audio", status: "pending", weight: 5, progress: 0 },
-    { id: "metadata", label: "Fetch metadata", status: "pending", weight: 5, progress: 0 },
-    { id: "transcript", label: "Download transcript", status: "pending", weight: 10, progress: 0 },
-    { id: "analysis", label: "AI analysis", status: "pending", weight: 15, progress: 0 },
+    { id: "video", label: "Download video", status: hasVideo ? "done" : "active", weight: 35, progress: hasVideo ? 100 : 0 },
+    { id: "audio", label: "Download audio", status: hasVideo ? "done" : "pending", weight: 30, progress: hasVideo ? 100 : 0 },
+    { id: "merge", label: "Mux video & audio", status: hasVideo ? "done" : "pending", weight: 10, progress: hasVideo ? 100 : 0 },
+    { id: "transcript", label: "Download transcript", status: hasTranscript ? "done" : "pending", weight: 10, progress: hasTranscript ? 100 : 0 },
+    { id: "analysis", label: "AI analysis", status: hasAnalysis ? "done" : "pending", weight: 15, progress: hasAnalysis ? 100 : 0 },
   ];
 
   const getTask = (id: string) => tasks.find((t) => t.id === id)!;
@@ -97,7 +102,7 @@ app.get("/api/media/process/:videoId", async (req, res) => {
     });
 
     // Mark extraction tasks done
-    for (const id of ["video", "audio", "merge", "metadata"]) {
+    for (const id of ["video", "audio", "merge"]) {
       markDone(id);
     }
 
@@ -111,7 +116,7 @@ app.get("/api/media/process/:videoId", async (req, res) => {
     send("media", media);
 
     // Step 2: Fetch transcript
-    markActive("transcript", "Downloading captions...");
+    markActive("transcript", "Downloading captions\u2026");
     const transcript = await fetchTranscript(videoId, (message) => {
       getTask("transcript").detail = message;
       emitProgress();
@@ -129,7 +134,7 @@ app.get("/api/media/process/:videoId", async (req, res) => {
       markActive("analysis", "Loading cached analysis");
       analysis = JSON.parse(fs.readFileSync(cachePath, "utf-8"));
     } else {
-      markActive("analysis", "Sending to Claude...");
+      markActive("analysis", "Sending to Claude\u2026");
       analysis = await analyzeTranscript(result.title, transcript, (message) => {
         getTask("analysis").detail = message;
         emitProgress();

@@ -102,7 +102,7 @@ export async function analyzeTranscript(
 
   const client = new Anthropic({ apiKey });
 
-  onProgress?.(`Sending ${transcript.length} transcript entries to Claude...`);
+  onProgress?.(`Sending ${transcript.length} transcript entries to Claude\u2026`);
 
   const stream = client.messages.stream({
     model: "claude-sonnet-4-20250514",
@@ -125,7 +125,7 @@ export async function analyzeTranscript(
     const segCount = (text.match(/"id"\s*:\s*"seg_/g) || []).length;
     if (segCount > lastSegCount) {
       lastSegCount = segCount;
-      onProgress?.(`Building segment map... ${segCount} segments identified`);
+      onProgress?.(`Building segment map\u2026 ${segCount} segments identified`);
     }
   });
 

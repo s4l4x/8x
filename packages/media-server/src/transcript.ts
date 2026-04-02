@@ -39,7 +39,7 @@ export async function fetchTranscript(
     return parseJson3(subtitlePath);
   }
 
-  onProgress?.("Downloading captions...");
+  onProgress?.("Downloading captions\u2026");
 
   const url = `https://www.youtube.com/watch?v=${videoId}`;
 
@@ -55,7 +55,7 @@ export async function fetchTranscript(
   ]);
 
   if (!fs.existsSync(subtitlePath)) {
-    onProgress?.("Trying manual captions...");
+    onProgress?.("Trying manual captions\u2026");
     // Try manual subs
     await runYtDlp([
       "--write-sub",
