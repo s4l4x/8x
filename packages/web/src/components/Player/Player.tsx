@@ -54,8 +54,8 @@ export function Player({ videoId, onBack }: PlayerProps) {
     }
   }, [status, analysis]);
 
-  // Loading screen — shown before media is available
-  if (status === "processing" && !media) {
+  // Loading screen — shown until all tasks complete
+  if (status === "processing") {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-6 px-4">
         {/* Overall progress bar */}
@@ -198,44 +198,6 @@ export function Player({ videoId, onBack }: PlayerProps) {
             )}
           </>
         )}
-
-        {/* Processing status bar — shown after media is loaded while transcript/analysis runs */}
-        <AnimatePresence>
-          {status === "processing" && media && tasks.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="mt-4 px-4 py-3 bg-8x-surface border border-8x-border rounded-xl"
-            >
-              {/* Compact progress bar */}
-              <div className="flex items-center gap-3 mb-2">
-                <div className="flex-1 h-1.5 bg-8x-darker rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-8x-cyan rounded-full"
-                    animate={{ width: `${overallProgress}%` }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                  />
-                </div>
-                <span className="text-8x-muted text-xs tabular-nums">{overallProgress}%</span>
-              </div>
-              {/* Active task detail */}
-              {tasks.filter((t) => t.status === "active").map((task) => (
-                <div key={task.id} className="flex items-center gap-2 text-sm">
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                    className="w-4 h-4 border-2 border-8x-cyan border-t-transparent rounded-full flex-shrink-0"
-                  />
-                  <span className="text-8x-cyan text-sm font-medium">{task.label}</span>
-                  {task.detail && (
-                    <span className="text-8x-muted text-xs ml-auto">{task.detail}</span>
-                  )}
-                </div>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Error bar — shown after media loaded if analysis fails */}
         <AnimatePresence>
