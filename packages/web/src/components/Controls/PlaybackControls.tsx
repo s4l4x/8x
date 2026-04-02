@@ -2,13 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePlaybackStore } from "../../stores/playbackStore";
 import type { Segment } from "../../lib/types";
-
-const SEGMENT_COLORS: Record<Segment["type"], string> = {
-  key: "#06d6a0",       // 8x-cyan
-  context: "#3b82f6",   // 8x-blue
-  filler: "#5a5a66",
-  tangential: "#ffd166", // 8x-yellow
-};
+import { SEGMENT_COLORS } from "../../lib/constants";
 
 /**
  * Compute a seek target that skips over skip-sections (Infinity speed segments),
@@ -169,17 +163,12 @@ export function PlaybackControls({
   );
 
   const toggleFullscreen = useCallback(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    const container = video.closest("[data-player-root]");
-    if (!container) return;
-
     if (document.fullscreenElement) {
       document.exitFullscreen();
     } else {
-      container.requestFullscreen();
+      document.documentElement.requestFullscreen();
     }
-  }, [videoRef]);
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {

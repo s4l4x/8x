@@ -4,6 +4,7 @@ import { VideoElement } from "./VideoElement";
 import { OverlayLayer } from "./OverlayLayer";
 import { PlaybackControls } from "../Controls/PlaybackControls";
 import { SegmentLegend } from "../Controls/SegmentLegend";
+import { TopicPanel } from "../Topics/TopicPanel";
 import { useVideoStore } from "../../stores/videoStore";
 import { usePlaybackStore } from "../../stores/playbackStore";
 
@@ -46,6 +47,14 @@ export function Player({ videoId, onBack }: PlayerProps) {
   useEffect(() => {
     loadVideo(videoId);
   }, [videoId, loadVideo]);
+
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
 
   // Auto-enable smart mode when analysis is ready
   useEffect(() => {
@@ -126,8 +135,10 @@ export function Player({ videoId, onBack }: PlayerProps) {
     );
   }
 
+  const hasTopics = !!analysis?.topics;
+
   return (
-    <div className="flex flex-col items-center min-h-screen p-4 gap-4">
+    <div className={`flex flex-col items-center min-h-screen p-4 gap-4 ${hasTopics ? "pr-80" : ""}`}>
       <div className="w-full max-w-5xl">
         <button
           onClick={onBack}
@@ -169,7 +180,11 @@ export function Player({ videoId, onBack }: PlayerProps) {
 
             <div
               data-player-root
-              className="relative w-full rounded-2xl overflow-hidden bg-8x-black select-none"
+              className={`relative w-full overflow-hidden bg-8x-black select-none ${
+                isFullscreen
+                  ? "fixed inset-0 z-40 rounded-none"
+                  : "rounded-2xl"
+              }`}
             >
               <VideoElement ref={videoRef} url={media.url} />
 
@@ -216,6 +231,10 @@ export function Player({ videoId, onBack }: PlayerProps) {
         </AnimatePresence>
 
       </div>
+
+      {hasTopics && (
+        <TopicPanel topics={analysis!.topics!} videoRef={videoRef} />
+      )}
     </div>
   );
 }

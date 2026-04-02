@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { MediaStreams, VideoAnalysis } from "../lib/types";
+import type { MediaStreams, VideoAnalysis, TopicGroup } from "../lib/types";
 import { processVideo, type TaskStatus } from "../lib/api";
 import { computeStrategies } from "../lib/segmentEngine";
 
@@ -52,13 +52,30 @@ export const useVideoStore = create<VideoState>((set, get) => ({
 
       onAnalysis: (raw) => {
         const media = get().media;
-        const segments = computeStrategies(raw.segments);
+
+        // Flatten topics→segments, or use legacy flat array
+        const rawSegments = raw.topics
+          ? raw.topics.flatMap((t) => t.segments)
+          : raw.segments ?? [];
+
+        const segments = computeStrategies(rawSegments);
+
+        // Build TopicGroup[] with strategy-enriched segments
+        const topics: TopicGroup[] | undefined = raw.topics
+          ? raw.topics.map((t) => ({
+              title: t.title,
+              segments: segments.filter((s) =>
+                t.segments.some((rs) => rs.id === s.id),
+              ),
+            }))
+          : undefined;
 
         const analysis: VideoAnalysis = {
           videoId,
           title: media?.title ?? "",
           totalDuration: media?.duration ?? 0,
           segments,
+          topics,
           tangentialTopics: raw.tangentialTopics,
           estimatedSmartDuration: raw.estimatedSmartDuration,
         };

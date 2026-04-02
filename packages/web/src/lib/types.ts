@@ -1,8 +1,14 @@
+export interface TopicGroup {
+  title: string;
+  segments: Segment[];
+}
+
 export interface VideoAnalysis {
   videoId: string;
   title: string;
   totalDuration: number;
   segments: Segment[];
+  topics?: TopicGroup[];
   tangentialTopics: TangentialTopic[];
   estimatedSmartDuration: number;
 }

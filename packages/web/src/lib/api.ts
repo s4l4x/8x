@@ -14,8 +14,11 @@ interface SSEProgressEvent {
   tasks: TaskStatus[];
 }
 
+type RawSegment = Omit<Segment, "playbackStrategy">;
+
 interface AnalysisResponse {
-  segments: Omit<Segment, "playbackStrategy">[];
+  topics?: Array<{ title: string; segments: RawSegment[] }>;
+  segments?: RawSegment[];
   tangentialTopics: VideoAnalysis["tangentialTopics"];
   estimatedSmartDuration: number;
 }

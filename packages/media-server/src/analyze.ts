@@ -18,8 +18,14 @@ export interface TangentialTopic {
   expandedContent: string;
 }
 
-export interface AnalysisResult {
+export interface TopicGroup {
+  title: string;
   segments: Segment[];
+}
+
+export interface AnalysisResult {
+  topics: TopicGroup[];
+  segments?: Segment[];
   tangentialTopics: TangentialTopic[];
   estimatedSmartDuration: number;
 }
@@ -63,16 +69,23 @@ For each segment provide:
 
 Also identify tangential topics that can be collapsed into clickable tags.
 
+Group consecutive segments under descriptive topic headings. Each topic should represent a coherent section of the video (2–6 segments typically). Every segment must appear in exactly one topic.
+
 Return as JSON matching this exact schema (no markdown, just raw JSON):
 {
-  "segments": [
+  "topics": [
     {
-      "id": "seg_1",
-      "startTime": 0,
-      "endTime": 30,
-      "type": "filler",
-      "importance": 0.1,
-      "summary": "Intro and channel branding"
+      "title": "Introduction and Setup",
+      "segments": [
+        {
+          "id": "seg_1",
+          "startTime": 0,
+          "endTime": 30,
+          "type": "filler",
+          "importance": 0.1,
+          "summary": "Intro and channel branding"
+        }
+      ]
     }
   ],
   "tangentialTopics": [
