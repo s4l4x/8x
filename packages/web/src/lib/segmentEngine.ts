@@ -73,9 +73,9 @@ function strategyForSegment(seg: RawSegment): PlaybackStrategy {
       return {
         action: "skip",
         speed: 1,
-        audioFade: 0,
+        audioFade: 0.5,
         showOverlay: false,
-        pitchCorrect: false,
+        pitchCorrect: true,
       };
   }
 }
