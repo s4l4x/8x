@@ -11,5 +11,11 @@ packages/media-server/cache/
 # Build artifacts
 *.tsbuildinfo
 
+# Worktrees
+.worktrees/
+
+# Brainstorm sessions
+.superpowers/
+
 # OS
 .DS_Store
