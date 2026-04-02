@@ -32,7 +32,7 @@ export function TopicPanel({ topics, videoRef }: TopicPanelProps) {
   );
 
   return (
-    <div className="fixed top-0 right-0 h-screen w-80 bg-[#12121f] border-l border-white/5 z-50 flex flex-col">
+    <div className="fixed top-4 right-4 bottom-4 w-80 bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08] rounded-2xl z-50 flex flex-col shadow-2xl shadow-black/40">
       <div className="px-3 pt-4 pb-2">
         <span className="text-[11px] uppercase tracking-wider text-[#666]">
           Topics
