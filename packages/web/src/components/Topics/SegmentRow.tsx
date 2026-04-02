@@ -23,12 +23,12 @@ export const SegmentRow = forwardRef<HTMLDivElement, SegmentRowProps>(
       <div
         ref={ref}
         onClick={() => onSeek(segment.startTime)}
-        className={`flex items-center gap-1.5 py-1 px-1.5 rounded cursor-pointer transition-colors hover:bg-white/5 ${
+        className={`flex items-start gap-1.5 py-1 px-1.5 rounded cursor-pointer transition-colors hover:bg-white/5 ${
           isActive ? "bg-[#ffffff0d]" : ""
         } ${isDimmed ? "opacity-50" : ""}`}
       >
         <span
-          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+          className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-[5px]"
           style={{ backgroundColor: SEGMENT_COLORS[segment.type] }}
         />
         <span
@@ -36,7 +36,6 @@ export const SegmentRow = forwardRef<HTMLDivElement, SegmentRowProps>(
             isActive ? "text-[#ccc]" : "text-[#888]"
           }`}
         >
-          {isActive ? "▶ " : ""}
           {segment.summary}
         </span>
         <span className="text-[10px] text-[#666] tabular-nums flex-shrink-0">
