@@ -282,11 +282,11 @@ export function PlaybackControls({
                     const isPlayed = (seg.endTime / duration) * 100 <= progress;
                     const isPartial = left < progress && !isPlayed;
 
-                    const alpha = isPlayed || isPartial ? 1 : 0.35;
                     const color = SEGMENT_COLORS[seg.type];
                     const r = parseInt(color.slice(1, 3), 16);
                     const g = parseInt(color.slice(3, 5), 16);
                     const b = parseInt(color.slice(5, 7), 16);
+                    const v = isPlayed || isPartial ? 1 : 0.4;
 
                     return (
                       <div
@@ -295,14 +295,21 @@ export function PlaybackControls({
                         style={{
                           left: `${left}%`,
                           width: `${width}%`,
-                          backgroundColor: `rgba(${r},${g},${b},${alpha})`,
+                          backgroundColor: isPlayed || isPartial
+                            ? `rgb(${r},${g},${b})`
+                            : `rgba(${Math.round(r * v)},${Math.round(g * v)},${Math.round(b * v)},0.6)`,
                         }}
                         title={`${seg.type}: ${seg.summary}`}
                       >
                         {/* Importance bar — visible when expanded */}
                         <div
-                          className="absolute bottom-0 left-0 right-0 bg-white/20 border-t border-white/85 opacity-0 group-hover/scrub:opacity-100 transition-opacity"
-                          style={{ height: `${seg.importance * 100}%` }}
+                          className="absolute bottom-0 left-0 right-0 bg-white/20 opacity-0 group-hover/scrub:opacity-100 transition-opacity"
+                          style={{
+                            height: `${seg.importance * 100}%`,
+                            borderTop: isPlayed || isPartial
+                              ? "1px solid rgba(255,255,255,0.85)"
+                              : `1px solid rgb(${Math.round(r * 0.5 + 255 * 0.3)},${Math.round(g * 0.5 + 255 * 0.3)},${Math.round(b * 0.5 + 255 * 0.3)})`,
+                          }}
                         />
                       </div>
                     );
