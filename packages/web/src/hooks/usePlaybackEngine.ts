@@ -36,6 +36,11 @@ export function usePlaybackEngine({
   const onOverlayChangeRef = useRef(onOverlayChange);
   onOverlayChangeRef.current = onOverlayChange;
 
+  // Frame-drop detection via requestVideoFrameCallback
+  const rvfcIdRef = useRef<number>(0);
+  const lastRvfcWallRef = useRef(0);
+  const stallCountRef = useRef(0);
+
   // Smooth speed ramping
   const rampSpeed = useCallback(() => {
     const video = videoRef.current;
@@ -69,6 +74,70 @@ export function usePlaybackEngine({
     [rampSpeed],
   );
 
+  // requestVideoFrameCallback handler — detects decoder stalls at high speed
+  // and seeks forward to force the decoder to restart from a keyframe
+  const onVideoFrame = useCallback(
+    (now: DOMHighResTimeStamp, _metadata: VideoFrameCallbackMetadata) => {
+      const video = videoRef.current;
+      if (!video || video.paused || video.seeking || skippingRef.current) {
+        if (video && !video.paused) {
+          rvfcIdRef.current = video.requestVideoFrameCallback(onVideoFrame);
+        }
+        return;
+      }
+
+      const speed = currentSpeedRef.current;
+
+      if (speed > 2 && lastRvfcWallRef.current > 0) {
+        const wallDeltaMs = now - lastRvfcWallRef.current;
+
+        // At 60fps display, frames arrive every ~16ms. At 30fps, ~33ms.
+        // If >200ms between rendered frames at high speed, the decoder is choking.
+        if (wallDeltaMs > 200) {
+          stallCountRef.current++;
+          // Two consecutive stalls → seek forward to the next keyframe boundary
+          if (stallCountRef.current >= 2) {
+            const lostSeconds = (wallDeltaMs / 1000) * speed;
+            video.currentTime += Math.min(lostSeconds, 3);
+            stallCountRef.current = 0;
+            lastRvfcWallRef.current = 0;
+            rvfcIdRef.current = video.requestVideoFrameCallback(onVideoFrame);
+            return;
+          }
+        } else {
+          // Good frame — decay stall counter
+          stallCountRef.current = Math.max(0, stallCountRef.current - 1);
+        }
+      }
+
+      lastRvfcWallRef.current = now;
+      rvfcIdRef.current = video.requestVideoFrameCallback(onVideoFrame);
+    },
+    [videoRef],
+  );
+
+  // Start/stop the rVFC loop when playback state changes
+  const startFrameMonitor = useCallback(
+    (video: HTMLVideoElement) => {
+      if ("requestVideoFrameCallback" in video) {
+        lastRvfcWallRef.current = 0;
+        stallCountRef.current = 0;
+        rvfcIdRef.current = video.requestVideoFrameCallback(onVideoFrame);
+      }
+    },
+    [onVideoFrame],
+  );
+
+  const stopFrameMonitor = useCallback(
+    (video: HTMLVideoElement) => {
+      if (rvfcIdRef.current && "cancelVideoFrameCallback" in video) {
+        video.cancelVideoFrameCallback(rvfcIdRef.current);
+        rvfcIdRef.current = 0;
+      }
+    },
+    [],
+  );
+
   // Attach/detach the engine
   useEffect(() => {
     const video = videoRef.current;
@@ -77,6 +146,7 @@ export function usePlaybackEngine({
       if (video) {
         video.playbackRate = 1;
         video.volume = 1;
+        stopFrameMonitor(video);
       }
       currentSegRef.current = null;
       targetSpeedRef.current = 1;
@@ -160,18 +230,29 @@ export function usePlaybackEngine({
       }
     };
 
+    const onPlay = () => startFrameMonitor(video);
+    const onPause = () => stopFrameMonitor(video);
+
     video.addEventListener("timeupdate", onTimeUpdate);
     video.addEventListener("seeked", onSeeked);
+    video.addEventListener("play", onPlay);
+    video.addEventListener("pause", onPause);
+
+    // Start monitor if already playing
+    if (!video.paused) startFrameMonitor(video);
 
     return () => {
       video.removeEventListener("timeupdate", onTimeUpdate);
       video.removeEventListener("seeked", onSeeked);
+      video.removeEventListener("play", onPlay);
+      video.removeEventListener("pause", onPause);
       cancelAnimationFrame(rafRef.current);
+      stopFrameMonitor(video);
       skippingRef.current = false;
     };
     // onOverlayChange accessed via ref to avoid re-running this effect
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoRef, analysis, enabled, setTargetSpeed, setSpeed]);
+  }, [videoRef, analysis, enabled, setTargetSpeed, setSpeed, startFrameMonitor, stopFrameMonitor]);
 
   useEffect(() => {
     return () => cancelAnimationFrame(rafRef.current);
