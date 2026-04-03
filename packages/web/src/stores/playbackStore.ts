@@ -10,6 +10,23 @@ export const DEFAULT_SPEEDS: Record<SegmentType, number> = {
   tangential: 3,
 };
 
+export const SPEED_RANGE_WIDTHS: Record<SegmentType, number> = {
+  key: 1,
+  context: 1,
+  tangential: 2,
+  filler: 0,
+};
+
+export function computeSegmentSpeed(
+  type: SegmentType,
+  importance: number,
+  baseSpeed: number,
+): number {
+  if (!isFinite(baseSpeed)) return baseSpeed;
+  const rangeWidth = SPEED_RANGE_WIDTHS[type];
+  return baseSpeed + (1 - importance) * rangeWidth;
+}
+
 interface PlaybackState {
   playing: boolean;
   currentTime: number;

@@ -45,16 +45,16 @@ function strategyForSegment(seg: RawSegment): PlaybackStrategy {
     case "key":
       return {
         action: "play",
-        speed: 1,
+        speed: 1 + (1 - seg.importance),
         audioFade: 1,
         showOverlay: false,
-        pitchCorrect: false,
+        pitchCorrect: seg.importance < 0.5,
       };
 
     case "context":
       return {
         action: "speed",
-        speed: 1.5 + (1 - seg.importance) * 0.5, // 1.5x–2x based on importance
+        speed: 2 + (1 - seg.importance),
         audioFade: 0.8,
         showOverlay: false,
         pitchCorrect: true,
@@ -72,7 +72,7 @@ function strategyForSegment(seg: RawSegment): PlaybackStrategy {
     case "tangential":
       return {
         action: "skip",
-        speed: 1,
+        speed: 3 + (1 - seg.importance) * 2,
         audioFade: 0.5,
         showOverlay: false,
         pitchCorrect: true,

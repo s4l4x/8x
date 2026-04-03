@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import type { Segment, VideoAnalysis } from "../lib/types";
-import { usePlaybackStore } from "../stores/playbackStore";
+import { usePlaybackStore, computeSegmentSpeed } from "../stores/playbackStore";
 
 export interface OverlayState {
   visible: boolean;
@@ -96,7 +96,7 @@ export function usePlaybackEngine({
 
       const time = video.currentTime;
       const seg = findSegment(analysis.segments, time);
-      const overrides = speedOverridesRef.current;
+      const overrides = usePlaybackStore.getState().speedOverrides;
 
       if (!seg) {
         if (currentSegRef.current !== null) {
@@ -109,7 +109,8 @@ export function usePlaybackEngine({
       }
 
       const isNewSegment = seg.id !== currentSegRef.current;
-      const overrideSpeed = overrides[seg.type];
+      const baseSpeed = overrides[seg.type];
+      const overrideSpeed = computeSegmentSpeed(seg.type, seg.importance, baseSpeed);
       const strategy = seg.playbackStrategy;
 
       if (!isFinite(overrideSpeed)) {
@@ -140,7 +141,7 @@ export function usePlaybackEngine({
         return;
       }
 
-      // Apply speed
+      // Apply speed — picks up slider changes mid-segment too
       if (targetSpeedRef.current !== overrideSpeed || isNewSegment) {
         setTargetSpeed(overrideSpeed);
       }

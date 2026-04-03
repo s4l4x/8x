@@ -282,6 +282,12 @@ export function PlaybackControls({
                     const isPlayed = (seg.endTime / duration) * 100 <= progress;
                     const isPartial = left < progress && !isPlayed;
 
+                    const alpha = isPlayed || isPartial ? 1 : 0.35;
+                    const color = SEGMENT_COLORS[seg.type];
+                    const r = parseInt(color.slice(1, 3), 16);
+                    const g = parseInt(color.slice(3, 5), 16);
+                    const b = parseInt(color.slice(5, 7), 16);
+
                     return (
                       <div
                         key={seg.id}
@@ -289,14 +295,13 @@ export function PlaybackControls({
                         style={{
                           left: `${left}%`,
                           width: `${width}%`,
-                          backgroundColor: SEGMENT_COLORS[seg.type],
-                          opacity: isPlayed ? 0.85 : isPartial ? 0.6 : 0.3,
+                          backgroundColor: `rgba(${r},${g},${b},${alpha})`,
                         }}
                         title={`${seg.type}: ${seg.summary}`}
                       >
                         {/* Importance bar — visible when expanded */}
                         <div
-                          className="absolute bottom-0 left-0 right-0 bg-white/20 border-t border-white/40 opacity-0 group-hover/scrub:opacity-100 transition-opacity"
+                          className="absolute bottom-0 left-0 right-0 bg-white/20 border-t border-white/85 opacity-0 group-hover/scrub:opacity-100 transition-opacity"
                           style={{ height: `${seg.importance * 100}%` }}
                         />
                       </div>
@@ -312,7 +317,7 @@ export function PlaybackControls({
                 {/* Played overlay — brightens played region for non-segment fallback is handled above */}
                 {segments && segments.length > 0 && (
                   <div
-                    className="absolute inset-y-0 left-0 bg-white/15 pointer-events-none"
+                    className="absolute inset-y-0 left-0 pointer-events-none"
                     style={{ width: `${progress}%` }}
                   />
                 )}

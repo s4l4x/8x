@@ -6,7 +6,7 @@ import { PlaybackControls } from "../Controls/PlaybackControls";
 import { SegmentLegend } from "../Controls/SegmentLegend";
 import { TopicPanel } from "../Topics/TopicPanel";
 import { useVideoStore } from "../../stores/videoStore";
-import { usePlaybackStore } from "../../stores/playbackStore";
+import { usePlaybackStore, computeSegmentSpeed } from "../../stores/playbackStore";
 
 import {
   usePlaybackEngine,
@@ -164,7 +164,7 @@ export function Player({ videoId, onBack }: PlayerProps) {
                     <span className="text-8x-pink text-sm font-semibold">
                       {(() => {
                         const smartDuration = analysis.segments.reduce((sum, seg) => {
-                          const speed = speedOverrides[seg.type];
+                          const speed = computeSegmentSpeed(seg.type, seg.importance, speedOverrides[seg.type]);
                           if (!isFinite(speed)) return sum;
                           return sum + (seg.endTime - seg.startTime) / speed;
                         }, 0);

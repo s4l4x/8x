@@ -1,5 +1,5 @@
-import { useCallback, useMemo } from "react";
-import type { TopicGroup as TopicGroupType } from "../../lib/types";
+import { useCallback, useRef, useSyncExternalStore } from "react";
+import type { TopicGroup as TopicGroupType, Segment } from "../../lib/types";
 import { usePlaybackStore } from "../../stores/playbackStore";
 import { TopicGroup } from "./TopicGroup";
 
@@ -8,19 +8,46 @@ interface TopicPanelProps {
   videoRef: React.RefObject<HTMLVideoElement | null>;
 }
 
-export function TopicPanel({ topics, videoRef }: TopicPanelProps) {
-  const currentTime = usePlaybackStore((s) => s.currentTime);
-
-  const activeSegmentId = useMemo(() => {
-    for (const topic of topics) {
-      for (const seg of topic.segments) {
-        if (currentTime >= seg.startTime && currentTime < seg.endTime) {
-          return seg.id;
-        }
+function findActiveId(
+  topics: TopicGroupType[],
+  time: number,
+): string | null {
+  for (const topic of topics) {
+    for (const seg of topic.segments) {
+      if (time >= seg.startTime && time < seg.endTime) {
+        return seg.id;
       }
     }
-    return null;
-  }, [topics, currentTime]);
+  }
+  return null;
+}
+
+/**
+ * Subscribe to the active segment ID only — avoids re-rendering on every
+ * currentTime tick. Only re-renders when the active segment actually changes.
+ */
+function useActiveSegmentId(topics: TopicGroupType[]): string | null {
+  const topicsRef = useRef(topics);
+  topicsRef.current = topics;
+  const prevIdRef = useRef<string | null>(null);
+
+  return useSyncExternalStore(
+    (onStoreChange) =>
+      usePlaybackStore.subscribe((state, prev) => {
+        if (state.currentTime !== prev.currentTime) {
+          const newId = findActiveId(topicsRef.current, state.currentTime);
+          if (newId !== prevIdRef.current) {
+            prevIdRef.current = newId;
+            onStoreChange();
+          }
+        }
+      }),
+    () => prevIdRef.current,
+  );
+}
+
+export function TopicPanel({ topics, videoRef }: TopicPanelProps) {
+  const activeSegmentId = useActiveSegmentId(topics);
 
   const handleSeek = useCallback(
     (time: number) => {
